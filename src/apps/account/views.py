@@ -1,7 +1,7 @@
 from rest_framework import generics
 from rest_framework.views import APIView
 from rest_framework.permissions import AllowAny,IsAuthenticated
-from .models import User,Student
+from .models import User,Student,Teacher
 from .serializer import RegisterSerializer,LoginSerializer,StudentProfileSerializer,TeacherProfileSerializer
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.response import Response
@@ -44,12 +44,15 @@ class LoginView(APIView):
 class  StudentProfile(generics.RetrieveUpdateAPIView):
     permission_classes = [IsStudent]
     serializer_class = StudentProfileSerializer
-    def get_queryset(self):
+    lookup_url_kwarg='pk'
+    lookup_field='pk'
+    
+    def get_object(self):
         return Student.objects.get(user=self.request.user)
 
 
 class  TeacherProfile(generics.RetrieveUpdateAPIView):
     permission_classes = [IsTeacher]
     serializer_class = TeacherProfileSerializer
-    def get_queryset(self):
-        return Student.objects.get(user=self.request.user)
+    def get_object(self):
+        return Teacher.objects.get(user=self.request.user)

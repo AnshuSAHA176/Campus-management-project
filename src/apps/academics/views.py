@@ -1,7 +1,7 @@
 from rest_framework import viewsets
-from .models import Department,Batch,Semester
+from .models import Department,Batch,Semester,Subject
 from rest_framework.permissions import IsAdminUser
-from .serializer import DepartmentSerializer,BatchSerializer,SemesterSerializer
+from .serializer import DepartmentSerializer,BatchSerializer,SemesterSerializer,SubjectSerializer
 
 
 class DepartmentViewSet(viewsets.ModelViewSet):
@@ -22,3 +22,10 @@ class SemesterViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAdminUser]
     queryset = Semester.objects.select_related('department')
     serializer_class = SemesterSerializer
+
+class SubjectViewSet(viewsets.ModelViewSet):
+    permission_classes = [IsAdminUser]
+    queryset = Subject.objects.select_related('department','semester').prefetch_related('teachers')
+                                              
+
+    serializer_class = SubjectSerializer

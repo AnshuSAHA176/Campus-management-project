@@ -86,12 +86,14 @@ class Subject(models.Model):
         related_name="subjects"
     )
 
+    teachers = models.ManyToManyField(
+        "account.Teacher",
+        related_name="subjects",
+        blank=True
+    )
     name = models.CharField(max_length=150)
 
     code = models.CharField(max_length=30)
-
-
-   
 
     is_active = models.BooleanField(default=True)
 
@@ -105,3 +107,5 @@ class Subject(models.Model):
                 name="unique_subject_code"
             )
         ]
+
+

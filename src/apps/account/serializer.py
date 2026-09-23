@@ -55,6 +55,7 @@ class StudentProfileSerializer(serializers.ModelSerializer):
             'phone',
             'full_name',
             'enrollment_date',
+            'profile_picture'
         ]
 class TeacherProfileSerializer(serializers.ModelSerializer):
     class Meta:
@@ -64,4 +65,5 @@ class TeacherProfileSerializer(serializers.ModelSerializer):
             'department',
             'designation',
             'phone',
+            'profile_picture'
         ]
