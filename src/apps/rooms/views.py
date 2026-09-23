@@ -1,3 +1,9 @@
-from django.shortcuts import render
+from rest_framework import viewsets
+from rest_framework.permissions import IsAdminUser
+from .models import Room
+from .serializer import RoomSerializer
 
-# Create your views here.
+class RoomView(viewsets.ModelViewSet):
+    permission_classes = [IsAdminUser]
+    queryset = Room.objects.select_related('department')
+    serializer_class = RoomSerializer
