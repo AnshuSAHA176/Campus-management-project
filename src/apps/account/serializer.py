@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from .models import User
+from django.contrib.auth import authenticate
 
 class RegisterSerializer(serializers.ModelSerializer):
     class Meta:
@@ -24,5 +25,24 @@ class RegisterSerializer(serializers.ModelSerializer):
         }
 
     def create(self, validated_data):
-        user = User.create_user(**validated_data)
+        user = User.objects.create_user(**validated_data)
         return user
+
+class LoginSerializer(serializers.Serializer):
+    email = serializers.EmailField(required = True)
+    password = serializers.CharField(write_only = True)
+
+    
+    def validate(self, attrs):
+        if attrs['email'] is None:
+            raise serializers.ValidationError('email is required')
+        if attrs['password'] is None:
+            raise serializers.ValidationError('password is required')
+
+        user = authenticate(email = attrs['email'],password = attrs ['password'])
+
+        if user is None:
+            return serializers.ValidationError('email and password is wrong')
+
+        attrs['user'] = user
+        return attrs
