@@ -3,7 +3,7 @@ from django.contrib.auth.base_user import AbstractBaseUser
 import uuid
 from .custom_manager import CustomeUsermanager
 from django.contrib.auth.models import PermissionsMixin
-
+from cloudinary.models import CloudinaryField
 
 class User(AbstractBaseUser,PermissionsMixin):
     class RoleChoices(models.TextChoices):
@@ -55,7 +55,6 @@ class Student(models.Model):
         related_name="student_profile"
     )
 
-    
     student_id = models.CharField(max_length=50, unique=True)
     batch = models.ForeignKey(
         "academics.Batch",
@@ -64,6 +63,8 @@ class Student(models.Model):
         null=True
     )
     full_name = models.CharField(max_length=300,blank=True)
+
+    profile_picture = CloudinaryField('profile_picture',blank = True)
     phone = models.CharField(max_length=20, blank=True)
     enrollment_date = models.DateField(null=True, blank=True)
 
@@ -83,7 +84,7 @@ class Teacher(models.Model):
 
     employee_id = models.CharField(max_length=50, unique=True)
     full_name = models.CharField(max_length=300,blank=True)
-    
+    profile_picture = CloudinaryField('profile_picture',blank = True)
     department = models.ForeignKey(
         "academics.Department",
         on_delete=models.PROTECT,

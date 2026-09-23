@@ -8,9 +8,11 @@ authors = [
 ]
 requires-python = ">=3.11"
 dependencies = [
+    "cloudinary>=1.46.2",
     "django>=5.2.17",
     "djangorestframework>=3.18.1",
     "djangorestframework-simplejwt>=5.5.1",
+    "dotenv>=0.9.9",
     "drf-spectacular>=0.30.0",
     "psycopg2>=2.9.13",
 ]
