@@ -7,5 +7,5 @@ def createProfiles(sender,instance,created,**kwargs):
     if created:
         if instance.role  == User.RoleChoices.STUDENT:
             Student.objects.create(user=instance)
-        elif instance.role  == User.RoleChoices.Teacher:
+        elif instance.role  == User.RoleChoices.TEACHER:
             Teacher.objects.create(user = instance)

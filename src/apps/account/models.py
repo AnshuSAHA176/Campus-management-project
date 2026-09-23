@@ -5,47 +5,41 @@ from .custom_manager import CustomeUsermanager
 from django.contrib.auth.models import PermissionsMixin
 from cloudinary.models import CloudinaryField
 
-class User(AbstractBaseUser,PermissionsMixin):
+class User(AbstractBaseUser, PermissionsMixin):
+
     class RoleChoices(models.TextChoices):
-        STUDENT=('student','student')
-        Teacher=('teacher','Teacher')
-        ADMIN=('admin','Admin')
-        HOD=('hod','HOD')
+        STUDENT = "student", "Student"
+        TEACHER = "teacher", "Teacher"
+        ADMIN = "admin", "Admin"
+        HOD = "hod", "HOD"
 
- 
-    objects  = CustomeUsermanager()
-    id = models.UUIDField(primary_key=True,default=uuid.uuid4)
-    user_name = None
-    email = models.EmailField(
+    objects = CustomeUsermanager()
 
-         verbose_name="email address",
-        max_length=255,
-        unique=True,
+    id = models.UUIDField(
+        primary_key=True,
+        default=uuid.uuid4,
+        editable=False
     )
+
+    email = models.EmailField(
+        max_length=255,
+        unique=True
+    )
+
     role = models.CharField(
-        max_length=200,
+        max_length=20,
         choices=RoleChoices.choices,
         default=RoleChoices.STUDENT
-        )
-    
+    )
+
     USERNAME_FIELD = "email"
-    is_active = models.BooleanField(
-        default=True
-    )
-
-    is_staff = models.BooleanField(
-        default=False
-    )
-
-    
-    
-    
-    created_at=models.DateTimeField(auto_now_add=True)
-    updated_at=models.DateTimeField(auto_now=True)
-
     REQUIRED_FIELDS = []
 
+    is_active = models.BooleanField(default=True)
+    is_staff = models.BooleanField(default=False)
 
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
 
 class Student(models.Model):
@@ -55,7 +49,7 @@ class Student(models.Model):
         related_name="student_profile"
     )
 
-    student_id = models.CharField(max_length=50, unique=True)
+    student_id = models.CharField(max_length=50, unique=True,blank=True, null=True)
     batch = models.ForeignKey(
         "academics.Batch",
         on_delete=models.PROTECT,
@@ -82,7 +76,7 @@ class Teacher(models.Model):
         related_name="teacher_profile"
     )
 
-    employee_id = models.CharField(max_length=50, unique=True)
+    employee_id = models.CharField(max_length=50, unique=True,blank=True, null=True,)
     full_name = models.CharField(max_length=300,blank=True)
     profile_picture = CloudinaryField('profile_picture',blank = True)
     department = models.ForeignKey(

@@ -7,3 +7,5 @@ class RoomView(viewsets.ModelViewSet):
     permission_classes = [IsAdminUser]
     queryset = Room.objects.select_related('department')
     serializer_class = RoomSerializer
+
+

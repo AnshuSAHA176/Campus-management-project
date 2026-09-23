@@ -170,14 +170,8 @@ SPECTACULAR_SETTINGS = {
     },
 }
 
-ALLOWED_HOSTS = [
-    "localhost",
-    "127.0.0.1",
-    "forests-probably-bass-history.trycloudflare.com",
-]
-
 CSRF_TRUSTED_ORIGINS = [
-    "https://forests-probably-bass-history.trycloudflare.com",
+    "https://lay-apparel-urls-thousand.trycloudflare.com",
 ]
 
 
