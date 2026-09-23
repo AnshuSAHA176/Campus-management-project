@@ -27,8 +27,7 @@ class User(AbstractBaseUser,PermissionsMixin):
         choices=RoleChoices.choices,
         default=RoleChoices.STUDENT
         )
-    full_name = models.CharField(max_length=300)
-    phone_number = models.CharField(max_length=15)
+    
     USERNAME_FIELD = "email"
     is_active = models.BooleanField(
         default=True
@@ -46,3 +45,49 @@ class User(AbstractBaseUser,PermissionsMixin):
 
     REQUIRED_FIELDS = []
 
+
+
+
+class Student(models.Model):
+    user = models.OneToOneField(
+        User,
+        on_delete=models.CASCADE,
+        related_name="student_profile"
+    )
+
+    student_id = models.CharField(max_length=50, unique=True)
+    batch = models.ForeignKey(
+        "academics.Batch",
+        on_delete=models.PROTECT,
+        related_name="students"
+    )
+
+    phone = models.CharField(max_length=20, blank=True)
+    enrollment_date = models.DateField(null=True, blank=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+
+
+
+class Teacher(models.Model):
+    user = models.OneToOneField(
+        User,
+        on_delete=models.CASCADE,
+        related_name="teacher_profile"
+    )
+
+    employee_id = models.CharField(max_length=50, unique=True)
+
+    department = models.ForeignKey(
+        "academics.Department",
+        on_delete=models.PROTECT,
+        related_name="teachers"
+    )
+
+    designation = models.CharField(max_length=100, blank=True)
+    phone = models.CharField(max_length=20, blank=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
