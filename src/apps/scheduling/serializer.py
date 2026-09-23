@@ -31,5 +31,6 @@ class ClassSeasionSerializer(serializers.ModelSerializer):
             if attrs['start_time'] > timezone.now().time:
                 raise serializers.ValidationError('start time can not be past')
 
-        if attrs['start_time'] > attrs['end_time']
+        if attrs['start_time'] > attrs['end_time']:
+            ...
 
