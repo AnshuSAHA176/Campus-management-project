@@ -55,20 +55,23 @@ class Student(models.Model):
         related_name="student_profile"
     )
 
+    
     student_id = models.CharField(max_length=50, unique=True)
     batch = models.ForeignKey(
         "academics.Batch",
         on_delete=models.PROTECT,
-        related_name="students"
+        related_name="students",
+        null=True
     )
-
+    full_name = models.CharField(max_length=300,blank=True)
     phone = models.CharField(max_length=20, blank=True)
     enrollment_date = models.DateField(null=True, blank=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
-
+    def __str__(self):
+        return f"{self.full_name}"
 
 
 class Teacher(models.Model):
@@ -79,11 +82,13 @@ class Teacher(models.Model):
     )
 
     employee_id = models.CharField(max_length=50, unique=True)
-
+    full_name = models.CharField(max_length=300,blank=True)
+    
     department = models.ForeignKey(
         "academics.Department",
         on_delete=models.PROTECT,
-        related_name="teachers"
+        related_name="teachers",
+        null=True
     )
 
     designation = models.CharField(max_length=100, blank=True)
@@ -91,3 +96,5 @@ class Teacher(models.Model):
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    def __str__(self):
+        return f"{self.full_name}"

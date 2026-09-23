@@ -90,9 +90,8 @@ class Subject(models.Model):
 
     code = models.CharField(max_length=30)
 
-    credits = models.PositiveSmallIntegerField(default=1)
 
-    requires_lab = models.BooleanField(default=False)
+   
 
     is_active = models.BooleanField(default=True)
 

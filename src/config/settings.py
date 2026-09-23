@@ -25,7 +25,7 @@ SECRET_KEY = 'django-insecure-#&d_b*7n6f03y+%el2g*e#t$!z=l*z0fqjy#e_pv)$14(gzox_
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ["*"]
 
 
 # Application definition
@@ -38,8 +38,12 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
      "rest_framework",
+     'drf_spectacular',
      'apps.account',
      'apps.academics',
+     'apps.rooms',
+     'apps.scheduling',
+
 ]
 
 MIDDLEWARE = [
@@ -140,5 +144,20 @@ REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
       
         'rest_framework_simplejwt.authentication.JWTAuthentication',
-    )
+    ),
+     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+}
+
+SPECTACULAR_SETTINGS = {
+    "TITLE": "Campus Time API",
+    "DESCRIPTION": (
+        "API for the Department Campus Management "
+        "and Scheduling System."
+    ),
+    "VERSION": "1.0.0",
+    "SERVE_INCLUDE_SCHEMA": False,
+
+    "SWAGGER_UI_SETTINGS": {
+        "persistAuthorization": True,
+    },
 }
