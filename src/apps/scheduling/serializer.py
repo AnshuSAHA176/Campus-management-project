@@ -19,91 +19,174 @@ class ClassSeasionTitleSerializer(serializers.ModelSerializer):
 
 
 class ClassSeasionSerializer(serializers.ModelSerializer):
-    teacher_picture = serializers.ImageField(source = 'teacher.profile_picture')
+
+    teacher_picture = serializers.ImageField(
+        source="teacher.profile_picture",
+        read_only=True
+    )
+
     class Meta:
         model = ClassSession
-        fields = '__all__'
+        fields = "__all__"
 
+    def get_extra_kwargs(self):
+        extra_kwargs = super().get_extra_kwargs()
+
+        request = self.context.get("request")
+
+        if request and request.user.role == "teacher":
+            extra_kwargs["teacher"] = {
+                "read_only": True
+            }
+
+        extra_kwargs["created_by"] = {
+            "read_only": True
+        }
+
+        return extra_kwargs
 
     def validate(self, attrs):
-        request = self.context.get('request')
+
+        request = self.context.get("request")
+
+
+        if request.user.role == "teacher":
+            teacher = request.user.teacher_profile
+        else:
+            teacher = attrs["teacher"]
+
+      
+
         if not request.user.is_staff:
-            if attrs['start_time'] < timezone.now().time():
-                raise serializers.ValidationError(
-                    'Start time cannot be in the past.'
-                )
-            if attrs['date'] < timezone.now().date():
-                        raise serializers.ValidationError(
-                            'Class date cannot be in the past.'
-                        )
 
-        if attrs['start_time'] >= attrs['end_time']:
+            if attrs["date"] < timezone.now().date():
                 raise serializers.ValidationError(
-                    'Start time must be before the end time.'
+                    "Class date cannot be in the past."
                 )
 
-        subject = attrs['subject']
-
-        if subject.department != attrs['department']:
+            if (
+                attrs["date"] == timezone.now().date()
+                and attrs["start_time"] < timezone.now().time()
+            ):
                 raise serializers.ValidationError(
-                    'The subject does not belong to the department.'
+                    "Start time cannot be in the past."
                 )
 
-        if subject.semester != attrs['semester']:
-                raise serializers.ValidationError(
-                    'The subject does not belong to the semester.'
-                )
+        if attrs["start_time"] >= attrs["end_time"]:
+            raise serializers.ValidationError(
+                "Start time must be before the end time."
+            )
 
-        time_overlape = ClassSession.objects.filter(
-              date = attrs['date'],
-              start_time__lt = attrs['end_time'],
-              end_time__gt=attrs['start_time'],
-              
+
+        subject = attrs["subject"]
+        batch = attrs["batch"]
+        room = attrs["room"]
+
+        print("Teacher:", teacher)
+        print("Teacher department:", teacher.department_id)
+        print("Subject:", subject)
+        print("Subject department:", subject.department_id)
+
+                
+
+        if not subject.is_active:
+            raise serializers.ValidationError(
+                "Subject is not active."
+            )
+
+        if not batch.is_active:
+            raise serializers.ValidationError(
+                "Batch is not active."
+            )
+
+        if not room.is_active:
+            raise serializers.ValidationError(
+                "Room is not active."
+            )
+
+    
+
+        department = teacher.department
+
+        if subject.department != department:
+            raise serializers.ValidationError(
+                "The subject does not belong to the teacher's department."
+            )
+
+        if batch.department != department:
+            raise serializers.ValidationError(
+                "The batch does not belong to the teacher's department."
+            )
+
+        if room.department != department:
+            raise serializers.ValidationError(
+                "The room does not belong to the teacher's department."
+            )
+
+        
+
+        time_overlap = ClassSession.objects.filter(
+            date=attrs["date"],
+            start_time__lt=attrs["end_time"],
+            end_time__gt=attrs["start_time"],
         )
+
+        # Don't compare the object with itself during update
         if self.instance:
-            time_overlape = time_overlape.exclude(
+            time_overlap = time_overlap.exclude(
                 pk=self.instance.pk
             )
 
-        if time_overlape.filter(teacher = attrs['teacher']).exists() :
-              
-              raise serializers.ValidationError('The teacher already have class that time')
-        
-        if time_overlape.filter(batch = attrs['batch']).exists():
-              
-              raise serializers.ValidationError('The batch already have class this time range')
-        
-        if time_overlape.filter(room = attrs['room']).exists():
-              
-              raise serializers.ValidationError(f'The room alreay book for this time range {time_overlape.first().start_time} - {time_overlape.first().end_time}')
+      
+        if time_overlap.filter(
+            teacher=teacher
+        ).exists():
 
-        if not attrs['room'].is_active or not attrs['teacher'].is_active or not attrs['batch'].is_active or not attrs['subject'].is_active:
-              raise serializers.ValidationError('Please check somthing is not active before crate a class seasion')
+            raise serializers.ValidationError(
+                "The teacher already has a class during this time."
+            )
 
-        if attrs['teacher'].department != attrs['department']:
-              
-              raise serializers.ValidationError('teacher have to belong to the same department')
-        
-        if attrs['room'].department != attrs['department']:
-              
-              raise serializers.ValidationError('room have to belong to the same department')
-        
-        if attrs['batch'].department != attrs['department']:
-              
-              raise serializers.ValidationError('teacher have to belong to the same department')
+     
+        if time_overlap.filter(
+            batch=batch
+        ).exists():
 
+            raise serializers.ValidationError(
+                "The batch already has a class during this time."
+            )
 
+       
+        room_conflict = time_overlap.filter(
+            room=room
+        ).first()
+
+        if room_conflict:
+
+            raise serializers.ValidationError(
+                f"The room is already booked from "
+                f"{room_conflict.start_time} "
+                f"to {room_conflict.end_time}."
+            )
+
+        return attrs
 
     def create(self, validated_data):
-          request = self.context.get('request')
 
-          if request.user.role == 'teacher':
-                validated_data['teacher'] = request.user.teacher_profile
-                validated_data['department'] = request.user.teacher_profile.department
+        request = self.context.get("request")
 
-          validated_data['created_by'] = request.user
-          return ClassSession.objects.create(**validated_data)
+        # Teacher creates class for themselves
+        if request.user.role == "teacher":
 
+            validated_data["teacher"] = (
+                request.user.teacher_profile
+            )
+
+        # Always set creator from authenticated user
+        validated_data["created_by"] = request.user
+
+        return ClassSession.objects.create(
+            **validated_data
+        )
 
 
 {

@@ -33,35 +33,41 @@ class ClassSeasionViewset(viewsets.ModelViewSet):
     
 
     permission_classes = [IsAuthenticated]
+    serializer_class = ClassSeasionSerializer
 
-    def get_object(self):
-        user = self.request.user
-        if user.role == 'student':
+    def get_queryset(self):
 
-            profile = get_object_or_404(Student,user=user)
+            user = self.request.user
 
-            return ClassSession.objects.filter(batch = profile.batch)
+            queryset = ClassSession.objects.select_related(
+                "subject",
+                "teacher",
+                "batch",
+                "room",
+            )
 
-        elif user.role == 'teacher':
-            if self.request.method in ['list','retrieve']:
-               
-                return ClassSession.objects.select_related('subject','teacher','batch','room')
-                
-            
-            return ClassSession.objects.select_related('subject','teacher','batch','room').filter(teacher=user)
+            if user.role == "student":
+                return queryset.filter(
+                    batch=user.student_profile.batch
+                )
 
-        return ClassSession.objects.select_related('subject','teacher','batch','room')
+            if user.role == "teacher":
+                return queryset.filter(
+                    teacher=user.teacher_profile #i can changed this in future
+                )
+
+            return queryset
 
     def get_permissions(self):
-        if self.request.method in ['create','update','partial_update','destroy']:
+        if self.request.method in ["POST", "PUT", "PATCH", "DELETE"]:
             return [IsAdminOrTeacher()]
         
         return [IsAuthenticated()]
     
 
     def list(self, request, *args, **kwargs):
-
-        serializer = ClassSeasionTitleSerializer(many=True)
+        queryset = self.get_queryset()
+        serializer = ClassSeasionTitleSerializer( queryset,many=True)
 
         return Response(serializer.data)
     

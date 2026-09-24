@@ -1,3 +1,7 @@
 from django.contrib import admin
 
-# Register your models here.
+from .models import ClassSession,Booking,Timetable
+
+admin.site.register(ClassSession)
+admin.site.register(Booking)
+admin.site.register(Timetable)
