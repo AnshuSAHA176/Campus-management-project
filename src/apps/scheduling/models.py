@@ -1,12 +1,14 @@
+from datetime import datetime
+
 from django.db import models
 from django.contrib.postgres.constraints import ExclusionConstraint
 from django.contrib.postgres.fields import (
     DateTimeRangeField,
     RangeOperators,
 )
-from django.db.models import F
 from django.utils import timezone
-from datetime import datetime
+
+from psycopg2.extras import DateTimeTZRange
 
 
 class ClassSession(models.Model):
@@ -19,79 +21,102 @@ class ClassSession(models.Model):
     subject = models.ForeignKey(
         "academics.Subject",
         on_delete=models.PROTECT,
-        related_name="class_sessions"
+        related_name="class_sessions",
     )
 
     teacher = models.ForeignKey(
         "account.Teacher",
         on_delete=models.PROTECT,
-        related_name="class_sessions"
+        related_name="class_sessions",
     )
 
     batch = models.ForeignKey(
         "academics.Batch",
         on_delete=models.PROTECT,
-        related_name="class_sessions"
+        related_name="class_sessions",
     )
 
     room = models.ForeignKey(
         "rooms.Room",
         on_delete=models.PROTECT,
-        related_name="class_sessions"
+        related_name="class_sessions",
     )
 
     date = models.DateField()
+
     start_time = models.TimeField()
+
     end_time = models.TimeField()
 
-    # Used by PostgreSQL to detect overlapping sessions
-    time_range = DateTimeRangeField()
+    time_range = DateTimeRangeField(
+        null=True,
+        blank=True,
+    )
 
     status = models.CharField(
         max_length=20,
         choices=Status.choices,
-        default=Status.SCHEDULED
+        default=Status.SCHEDULED,
     )
 
-    cancellation_reason = models.TextField(blank=True)
+    cancellation_reason = models.TextField(
+        blank=True,
+    )
 
     created_by = models.ForeignKey(
         "account.User",
         on_delete=models.PROTECT,
-        related_name="created_sessions"
+        related_name="created_sessions",
     )
 
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+    )
+
+    updated_at = models.DateTimeField(
+        auto_now=True,
+    )
 
     class Meta:
         constraints = [
 
-            # Same teacher cannot have overlapping classes
+            # Same teacher + overlapping time
             ExclusionConstraint(
                 name="no_teacher_time_overlap",
                 expressions=[
                     ("teacher", RangeOperators.EQUAL),
                     ("time_range", RangeOperators.OVERLAPS),
                 ],
+                condition=models.Q(
+                    status="SCHEDULED",
+                    time_range__isnull=False,
+                ),
             ),
 
-            # Same batch cannot have overlapping classes
+            # Same batch + overlapping time
             ExclusionConstraint(
                 name="no_batch_time_overlap",
                 expressions=[
                     ("batch", RangeOperators.EQUAL),
                     ("time_range", RangeOperators.OVERLAPS),
                 ],
+                condition=models.Q(
+                    status="SCHEDULED",
+                    time_range__isnull=False,
+                ),
             ),
 
-            # Same room cannot have overlapping classes
+            # Same room + overlapping time
             ExclusionConstraint(
                 name="no_room_time_overlap",
                 expressions=[
                     ("room", RangeOperators.EQUAL),
                     ("time_range", RangeOperators.OVERLAPS),
                 ],
+                condition=models.Q(
+                    status="SCHEDULED",
+                    time_range__isnull=False,
+                ),
             ),
         ]
 
@@ -99,12 +124,12 @@ class ClassSession(models.Model):
 
         start = datetime.combine(
             self.date,
-            self.start_time
+            self.start_time,
         )
 
         end = datetime.combine(
             self.date,
-            self.end_time
+            self.end_time,
         )
 
         if timezone.is_naive(start):
@@ -113,23 +138,14 @@ class ClassSession(models.Model):
         if timezone.is_naive(end):
             end = timezone.make_aware(end)
 
-        # [) means:
-        # start included
-        # end excluded
-        #
-        # 10:00-11:00
-        # 11:00-12:00
-        #
-        # are therefore allowed.
-        from psycopg2.extras import DateTimeTZRange
-
         self.time_range = DateTimeTZRange(
             start,
             end,
-            "[)"
+            "[)",
         )
 
         super().save(*args, **kwargs)
+
 
 class Booking(models.Model):
 
@@ -142,29 +158,29 @@ class Booking(models.Model):
     room = models.ForeignKey(
         "rooms.Room",
         on_delete=models.PROTECT,
-        related_name="bookings"
+        related_name="bookings",
     )
 
     requested_by = models.ForeignKey(
         "account.User",
         on_delete=models.PROTECT,
-        related_name="room_bookings"
+        related_name="room_bookings",
     )
 
     class_session = models.OneToOneField(
         ClassSession,
         on_delete=models.CASCADE,
-        related_name="booking"
+        related_name="booking",
     )
 
     status = models.CharField(
         max_length=20,
         choices=Status.choices,
-        default=Status.PENDING
+        default=Status.PENDING,
     )
 
     reason = models.TextField(
-        blank=True
+        blank=True,
     )
 
     approved_by = models.ForeignKey(
@@ -172,50 +188,54 @@ class Booking(models.Model):
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        related_name="approved_bookings"
+        related_name="approved_bookings",
     )
 
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+    )
+
+    updated_at = models.DateTimeField(
+        auto_now=True,
+    )
 
 
 class Timetable(models.Model):
 
     name = models.CharField(
-        max_length=150
+        max_length=150,
     )
 
     department = models.ForeignKey(
         "academics.Department",
         on_delete=models.PROTECT,
-        related_name="timetables"
+        related_name="timetables",
     )
 
     semester = models.ForeignKey(
         "academics.Semester",
         on_delete=models.PROTECT,
-        related_name="timetables"
+        related_name="timetables",
     )
 
     batch = models.ForeignKey(
         "academics.Batch",
         on_delete=models.PROTECT,
-        related_name="timetables"
+        related_name="timetables",
     )
 
     academic_year = models.CharField(
-        max_length=20
+        max_length=20,
     )
 
     is_active = models.BooleanField(
-        default=True
+        default=True,
     )
 
     created_at = models.DateTimeField(
-        auto_now_add=True
+        auto_now_add=True,
     )
 
     updated_at = models.DateTimeField(
-        auto_now=True
+        auto_now=True,
     )
-
