@@ -4,6 +4,13 @@ from .models import ClassSession
 from django.utils import timezone
 from apps.academics.models import Subject
 
+from django.db import transaction
+from apps.account.models import Teacher
+
+from apps.academics.models import Batch
+
+from apps.rooms.models import Room
+
 class ClassSeasionTitleSerializer(serializers.ModelSerializer):
     teacher_picture = serializers.ImageField(source = 'teacher.profile_picture')
     class Meta:
@@ -169,11 +176,12 @@ class ClassSeasionSerializer(serializers.ModelSerializer):
             )
 
         return attrs
-
+    @transaction.atomic
     def create(self, validated_data):
 
         request = self.context.get("request")
 
+        
         # Teacher creates class for themselves
         if request.user.role == "teacher":
 
@@ -181,6 +189,25 @@ class ClassSeasionSerializer(serializers.ModelSerializer):
                 request.user.teacher_profile
             )
 
+        teacher = (
+            Teacher.objects.select_for_update().filter(
+                pk=validated_data['teacher'].pk
+            )
+        )
+
+        batch = (
+            Batch.objects.select_for_update().get(
+                pk=validated_data['batch'].pk
+            )
+        )
+
+        room = (
+            Room.objects.select_for_update().get(
+                pk=validated_data['room'].pk
+            )
+        )
+
+        
         # Always set creator from authenticated user
         validated_data["created_by"] = request.user
 
