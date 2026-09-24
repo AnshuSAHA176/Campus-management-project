@@ -6,6 +6,10 @@ from apps.account.models import Student,User
 from django.shortcuts import get_object_or_404
 from .serializer import ClassSeasionTitleSerializer,ClassSeasionSerializer
 from rest_framework.response import Response
+from django.db import IntegrityError
+from rest_framework import status
+from django_filters.rest_framework import DjangoFilterBackend
+from .filter import ClassSeasionFilter
 
 
 class IsAdminOrTeacher(BasePermission):
@@ -34,7 +38,8 @@ class ClassSeasionViewset(viewsets.ModelViewSet):
 
     permission_classes = [IsAuthenticated]
     serializer_class = ClassSeasionSerializer
-
+    filter_backends = [DjangoFilterBackend]
+    filter_class = ClassSeasionFilter
     def get_queryset(self):
 
             user = self.request.user
@@ -74,7 +79,29 @@ class ClassSeasionViewset(viewsets.ModelViewSet):
     def create(self, request, *args, **kwargs):
         serializer = ClassSeasionSerializer( data = request.data, context={'request': request})
         serializer.is_valid(raise_exception=True)
-        serializer.save()
+        try:
+            serializer.save()
+
+        except IntegrityError as exc:
+
+            error = str(exc)
+
+            if "no_teacher_time_overlap" in error:
+                message = "The teacher already has a class during this time."
+
+            elif "no_batch_time_overlap" in error:
+                message = "The batch already has a class during this time."
+
+            elif "no_room_time_overlap" in error:
+                message = "The room is already booked during this time."
+
+            else:
+                message = "The class could not be scheduled because of a conflict."
+
+            return Response(
+                {"detail": message},
+                status=status.HTTP_400_BAD_REQUEST
+            )
         return Response(serializer.data)
 
     
