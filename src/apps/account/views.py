@@ -7,6 +7,7 @@ from .serializer import (
     LoginSerializer,
     StudentProfileSerializer,
     TeacherProfileSerializer,
+    ActivitySerializer
 )
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.response import Response
@@ -209,5 +210,5 @@ class AdminDashBoard(APIView):
 class AuditLogs(generics.ListAPIView):
     permission_classes = [IsAdminUser]
     queryset = Activity.objects.order_by('-created_at')
-    serializer_class
+    serializer_class = ActivitySerializer
     

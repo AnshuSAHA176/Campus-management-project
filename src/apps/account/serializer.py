@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from .models import User,Student,Teacher
 from django.contrib.auth import authenticate
+from apps.scheduling.models import  Activity
 
 class RegisterSerializer(serializers.ModelSerializer):
     class Meta:
@@ -68,3 +69,9 @@ class TeacherProfileSerializer(serializers.ModelSerializer):
             'profile_picture'
         ]
 
+
+class ActivitySerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = Activity
+        fields ='__all__'
