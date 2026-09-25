@@ -39,7 +39,8 @@ class ClassSeasionViewset(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
     serializer_class = ClassSeasionSerializer
     filter_backends = [DjangoFilterBackend]
-    filter_class = ClassSeasionFilter
+    filterset_class = ClassSeasionFilter
+    
     def get_queryset(self):
 
             user = self.request.user
@@ -71,7 +72,7 @@ class ClassSeasionViewset(viewsets.ModelViewSet):
     
 
     def list(self, request, *args, **kwargs):
-        queryset = self.get_queryset()
+        queryset = self.filter_queryset(self.get_queryset())
         serializer = ClassSeasionTitleSerializer( queryset,many=True)
 
         return Response(serializer.data)

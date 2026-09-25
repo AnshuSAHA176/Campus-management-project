@@ -32,7 +32,7 @@ class ClassSeasionSerializer(serializers.ModelSerializer):
         read_only=True
     )
 
-    class Meta:
+    class Meta: 
         model = ClassSession
         fields = "__all__"
 
@@ -53,48 +53,96 @@ class ClassSeasionSerializer(serializers.ModelSerializer):
         return extra_kwargs
 
     def validate(self, attrs):
-
         request = self.context.get("request")
-
 
         if request.user.role == "teacher":
             teacher = request.user.teacher_profile
         else:
-            teacher = attrs["teacher"]
+            teacher = attrs.get(
+                "teacher",
+                self.instance.teacher if self.instance else None
+            )
 
-      
+        # Existing values + PATCH values
+        date = attrs.get(
+            "date",
+            self.instance.date if self.instance else None
+        )
+
+        start_time = attrs.get(
+            "start_time",
+            self.instance.start_time if self.instance else None
+        )
+
+        end_time = attrs.get(
+            "end_time",
+            self.instance.end_time if self.instance else None
+        )
+
+        subject = attrs.get(
+            "subject",
+            self.instance.subject if self.instance else None
+        )
+
+        batch = attrs.get(
+            "batch",
+            self.instance.batch if self.instance else None
+        )
+
+        room = attrs.get(
+            "room",
+            self.instance.room if self.instance else None
+        )
+
+        status_value = attrs.get(
+            "status",
+            self.instance.status if self.instance else None
+        )
+
+        cancellation_reason = attrs.get(
+            "cancellation_reason",
+            self.instance.cancellation_reason if self.instance else ""
+        )
+
+        # -------------------------
+        # Cancellation validation
+        # -------------------------
+
+        if (
+            status_value == ClassSession.Status.CANCELLED
+            and not cancellation_reason.strip()
+        ):
+            raise serializers.ValidationError({
+                "cancellation_reason":
+                    "A cancellation reason is required when cancelling a class."
+            })
+
+        # -------------------------
+        # Basic validation
+        # -------------------------
 
         if not request.user.is_staff:
-
-            if attrs["date"] < timezone.now().date():
+            if date < timezone.now().date():
                 raise serializers.ValidationError(
                     "Class date cannot be in the past."
                 )
 
             if (
-                attrs["date"] == timezone.now().date()
-                and attrs["start_time"] < timezone.now().time()
+                date == timezone.now().date()
+                and start_time < timezone.now().time()
             ):
                 raise serializers.ValidationError(
                     "Start time cannot be in the past."
                 )
 
-        if attrs["start_time"] >= attrs["end_time"]:
+        if start_time >= end_time:
             raise serializers.ValidationError(
                 "Start time must be before the end time."
             )
 
-
-        subject = attrs["subject"]
-        batch = attrs["batch"]
-        room = attrs["room"]
-
-        print("Teacher:", teacher)
-        print("Teacher department:", teacher.department_id)
-        print("Subject:", subject)
-        print("Subject department:", subject.department_id)
-
-                
+        # -------------------------
+        # Active object validation
+        # -------------------------
 
         if not subject.is_active:
             raise serializers.ValidationError(
@@ -111,7 +159,9 @@ class ClassSeasionSerializer(serializers.ModelSerializer):
                 "Room is not active."
             )
 
-    
+        # -------------------------
+        # Department validation
+        # -------------------------
 
         department = teacher.department
 
@@ -130,52 +180,44 @@ class ClassSeasionSerializer(serializers.ModelSerializer):
                 "The room does not belong to the teacher's department."
             )
 
-        
+        # -------------------------
+        # Conflict validation
+        # -------------------------
 
         time_overlap = ClassSession.objects.filter(
-            date=attrs["date"],
-            start_time__lt=attrs["end_time"],
-            end_time__gt=attrs["start_time"],
+            date=date,
+            start_time__lt=end_time,
+            end_time__gt=start_time,
+            status=ClassSession.Status.SCHEDULED,
         )
 
-        # Don't compare the object with itself during update
         if self.instance:
             time_overlap = time_overlap.exclude(
                 pk=self.instance.pk
             )
 
-      
-        if time_overlap.filter(
-            teacher=teacher
-        ).exists():
-
+        if time_overlap.filter(teacher=teacher).exists():
             raise serializers.ValidationError(
                 "The teacher already has a class during this time."
             )
 
-     
-        if time_overlap.filter(
-            batch=batch
-        ).exists():
-
+        if time_overlap.filter(batch=batch).exists():
             raise serializers.ValidationError(
                 "The batch already has a class during this time."
             )
 
-       
         room_conflict = time_overlap.filter(
             room=room
         ).first()
 
         if room_conflict:
-
             raise serializers.ValidationError(
                 f"The room is already booked from "
-                f"{room_conflict.start_time} "
-                f"to {room_conflict.end_time}."
+                f"{room_conflict.start_time} to "
+                f"{room_conflict.end_time}."
             )
 
-        return attrs
+        return attrs    
     @transaction.atomic
     def create(self, validated_data):
 
