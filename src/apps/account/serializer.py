@@ -67,3 +67,4 @@ class TeacherProfileSerializer(serializers.ModelSerializer):
             'phone',
             'profile_picture'
         ]
+

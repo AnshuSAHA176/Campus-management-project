@@ -3,7 +3,7 @@ from django.dispatch import receiver
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
 
-from .models import ClassSession
+from .models import ClassSession, Activity
 
 
 @receiver(pre_save, sender=ClassSession)
@@ -41,18 +41,29 @@ def Notification(sender, instance, created, **kwargs):
     channel_layer = get_channel_layer()
     messages = []
 
-   
+    # ==========================================
+    # CLASS CREATED
+    # ==========================================
 
     if created:
 
-        messages.append(
+        message = (
             f"New class: {instance.subject.code} "
             f"on {instance.date} "
             f"at {instance.start_time} "
             f"in Room {instance.room.room_number}."
         )
 
-    
+        messages.append(message)
+
+        Activity.objects.create(
+            type=Activity.ActivityType.CLASS_CREATED,
+            message=message
+        )
+
+    # ==========================================
+    # CLASS CANCELLED
+    # ==========================================
 
     if (
         not created
@@ -60,57 +71,61 @@ def Notification(sender, instance, created, **kwargs):
         and instance.status == ClassSession.Status.CANCELLED
     ):
 
-        messages.append(
+        message = (
             f"{instance.subject.code} class on {instance.date} "
             f"at {instance.start_time} has been cancelled."
         )
+
+        messages.append(message)
 
         if instance.cancellation_reason:
             messages.append(
                 f"Reason: {instance.cancellation_reason}"
             )
 
-    
-
-    if (
-        not created
-        and instance._old_date
-        and instance._old_date != instance.date
-    ):
-
-        messages.append(
-            f"{instance.subject.code} has been rescheduled "
-            f"from {instance._old_date} to {instance.date}."
+        Activity.objects.create(
+            type=Activity.ActivityType.CLASS_CANCELLED,
+            message=message
         )
 
-  
+    # ==========================================
+    # CLASS RESCHEDULED
+    # ==========================================
 
-    if (
+    rescheduled = (
         not created
-        and instance._old_start_time
-        and instance._old_start_time != instance.start_time
-    ):
+        and (
+            (
+                instance._old_date
+                and instance._old_date != instance.date
+            )
+            or (
+                instance._old_start_time
+                and instance._old_start_time != instance.start_time
+            )
+            or (
+                instance._old_end_time
+                and instance._old_end_time != instance.end_time
+            )
+        )
+    )
 
-        messages.append(
-            f"{instance.subject.code} on {instance.date} "
-            f"has been rescheduled from "
-            f"{instance._old_start_time} to {instance.start_time}."
+    if rescheduled:
+
+        message = (
+            f"{instance.subject.code} class has been rescheduled."
         )
 
+        messages.append(message)
 
-    if (
-        not created
-        and instance._old_end_time
-        and instance._old_end_time != instance.end_time
-    ):
-
-        messages.append(
-            f"{instance.subject.code} class end time "
-            f"has changed from {instance._old_end_time} "
-            f"to {instance.end_time}."
+        Activity.objects.create(
+            type=Activity.ActivityType.CLASS_RESCHEDULED,
+            message=message
         )
 
-  
+    # ==========================================
+    # ROOM CHANGED
+    # ==========================================
 
     if (
         not created
@@ -118,13 +133,18 @@ def Notification(sender, instance, created, **kwargs):
         and instance._old_room != instance.room
     ):
 
-        messages.append(
+        message = (
             f"{instance.subject.code} on {instance.date} "
             f"has been moved from Room "
             f"{instance._old_room.room_number} to Room "
             f"{instance.room.room_number}."
         )
 
+        messages.append(message)
+
+    # ==========================================
+    # SEND WEBSOCKET NOTIFICATION
+    # ==========================================
 
     if messages:
 

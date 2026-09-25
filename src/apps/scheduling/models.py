@@ -147,95 +147,15 @@ class ClassSession(models.Model):
         super().save(*args, **kwargs)
 
 
-class Booking(models.Model):
+class Activity(models.Model):
+    class ActivityType(models.TextChoices):
+        CLASS_CREATED = "CLASS_CREATED", "Class Created"
+        CLASS_RESCHEDULED = "CLASS_RESCHEDULED", "Class Rescheduled"
+        CLASS_CANCELLED = "CLASS_CANCELLED", "Class Cancelled"
 
-    class Status(models.TextChoices):
-        PENDING = "PENDING", "Pending"
-        APPROVED = "APPROVED", "Approved"
-        REJECTED = "REJECTED", "Rejected"
-        CANCELLED = "CANCELLED", "Cancelled"
-
-    room = models.ForeignKey(
-        "rooms.Room",
-        on_delete=models.PROTECT,
-        related_name="bookings",
+    type = models.CharField(
+        max_length=50,
+        choices=ActivityType.choices
     )
-
-    requested_by = models.ForeignKey(
-        "account.User",
-        on_delete=models.PROTECT,
-        related_name="room_bookings",
-    )
-
-    class_session = models.OneToOneField(
-        ClassSession,
-        on_delete=models.CASCADE,
-        related_name="booking",
-    )
-
-    status = models.CharField(
-        max_length=20,
-        choices=Status.choices,
-        default=Status.PENDING,
-    )
-
-    reason = models.TextField(
-        blank=True,
-    )
-
-    approved_by = models.ForeignKey(
-        "account.User",
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name="approved_bookings",
-    )
-
-    created_at = models.DateTimeField(
-        auto_now_add=True,
-    )
-
-    updated_at = models.DateTimeField(
-        auto_now=True,
-    )
-
-
-class Timetable(models.Model):
-
-    name = models.CharField(
-        max_length=150,
-    )
-
-    department = models.ForeignKey(
-        "academics.Department",
-        on_delete=models.PROTECT,
-        related_name="timetables",
-    )
-
-    semester = models.ForeignKey(
-        "academics.Semester",
-        on_delete=models.PROTECT,
-        related_name="timetables",
-    )
-
-    batch = models.ForeignKey(
-        "academics.Batch",
-        on_delete=models.PROTECT,
-        related_name="timetables",
-    )
-
-    academic_year = models.CharField(
-        max_length=20,
-    )
-
-    is_active = models.BooleanField(
-        default=True,
-    )
-
-    created_at = models.DateTimeField(
-        auto_now_add=True,
-    )
-
-    updated_at = models.DateTimeField(
-        auto_now=True,
-    )
+    message = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)

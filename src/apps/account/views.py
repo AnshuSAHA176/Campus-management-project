@@ -12,14 +12,14 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.response import Response
 from rest_framework.permissions import BasePermission
 
-from django.db.models import Count, Q
+from django.db.models import Count, Q,Window
 
 from apps.rooms.models import Room
 from apps.academics.models import Subject, Batch
 
-from apps.scheduling.models import ClassSession
+from apps.scheduling.models import ClassSession, Activity
 from django.utils import timezone
-from datetime import datetime
+import datetime
 
 
 class IsStudent(BasePermission):
@@ -73,7 +73,7 @@ class TeacherProfile(generics.RetrieveUpdateAPIView):
 class AdminDashBoard(APIView):
     permission_classes = [IsAdminUser]
 
-    def post(self, request):
+    def get(self, request):
 
         overview = User.objects.prefetch_related(
             "student_profile", "teacher_profile"
@@ -89,8 +89,11 @@ class AdminDashBoard(APIView):
 
         end_of_week = start_of_week + datetime.timedelta(days=6)
         print(end_of_week)
+        start_of_next_week = start_of_week + datetime.timedelta(days=7)
 
-        today = (
+        end_of_next_week = start_of_next_week + datetime.timedelta(days=6)
+
+        schedule = (
             ClassSession.objects.select_related("subject", "teacher", "batch", "room")
             .filter(date=current_time.date())
             .aggregate(
@@ -98,15 +101,16 @@ class AdminDashBoard(APIView):
                 ongoing_classes=Count(
                     "id",
                     filter=Q(
-                        Q(start_time__lt=current_time.time())
-                        & Q(end_time__gt=current_time.time())
+                        start_time__lte=current_time.time(),
+                        end_time__gt=current_time.time(),
+                        status=ClassSession.Status.SCHEDULED,
                     ),
                 ),
                 scheduled_classes=Count(
                     "id",
                     filter=Q(
-                        ~Q(start_time__lt=current_time.time())
-                        & ~Q(end_time__gt=current_time.time())
+                        start_time__gt=current_time.time(),
+                        status=ClassSession.Status.SCHEDULED,
                     ),
                 ),
                 completed_classes=Count(
@@ -116,18 +120,46 @@ class AdminDashBoard(APIView):
                 classes_this_week=Count(
                     "id", filter=Q(date__range=[start_of_week, end_of_week])
                 ),
-                classes_next_week=Count("id", filter=Q(date__gt=end_of_week)),
+                classes_next_week=Count(
+                    "id", filter=Q(date__range=[start_of_next_week, end_of_next_week])
+                ),
                 cancelled_this_week=Count(
                     "id",
-                    filter=Q(date__range=[start_of_week, end_of_week])
-                    & Q(status=ClassSession.Status.CANCELLED),
+                    filter=Q(
+                        Q(date__range=[start_of_week, end_of_week])
+                        & Q(status=ClassSession.Status.CANCELLED)
+                    ),
                 ),
-                rescheduled_this_week=Count("id",
-                                             filter=
-                                             
-                                             ),
             )
         )
+
+        rooms = Room.objects.aggregate(
+            total_rooms=Count("id", filter=Q(is_active=True)),
+            rooms_in_use=Count(
+                "id",
+                filter=Q(
+                    class_sessions__start_time__lte=current_time.time(),
+                    class_sessions__end_time__gt=current_time.time(),
+                ),
+            ),
+        )
+
+        batch = Batch.objects.count()
+
+        activity_stats = Activity.objects.aggregate(
+    rescheduled_this_week=Count(
+        "id",
+        filter=Q(
+            type=Activity.ActivityType.CLASS_RESCHEDULED,
+            created_at__date__range=[
+                start_of_week,
+                end_of_week,
+            ],
+        ),
+    ),
+)
+
+        recent_activity = Activity.objects.order_by("-created_at")[:5]
 
         return Response(
             {
@@ -138,42 +170,44 @@ class AdminDashBoard(APIView):
                     "total_batches": Batch.objects.count(),
                     "total_rooms": Room.objects.count(),
                 },
-                "today": today,
+                "today": {
+                    "total_classes": schedule["total_classes"],
+                    "ongoing_classes": schedule["ongoing_classes"],
+                    "scheduled_classes": schedule["scheduled_classes"],
+                    "completed_classes": schedule["completed_classes"],
+                },
                 "schedule": {
-                    "classes_this_week": 68,
-                    "classes_next_week": 72,
-                    "cancelled_this_week": 4,
-                    "rescheduled_this_week": 6,
+                    "classes_this_week": schedule["classes_this_week"],
+                    "classes_next_week": schedule["classes_next_week"],
+                    "cancelled_this_week": schedule["cancelled_this_week"],
+                    "rescheduled_this_week": activity_stats["rescheduled_this_week"],
                 },
                 "rooms": {
-                    "total_rooms": 12,
-                    "rooms_in_use": 8,
-                    "available_rooms": 4,
-                    "utilization_percentage": 66.67,
+                    "total_rooms": rooms["total_rooms"],
+                    "rooms_in_use": rooms["rooms_in_use"],
+                    "available_rooms": rooms["total_rooms"] - rooms["rooms_in_use"],
+                    "utilization_percentage": round(
+                        (rooms["rooms_in_use"] / rooms["total_rooms"]) * 100
+                    ),
                 },
-                "people": {
-                    "active_students": 116,
-                    "inactive_students": 4,
-                    "active_teachers": 17,
-                    "inactive_teachers": 1,
+                "batches": {
+                    "active_batches": batch,
+                    "total_students": overview["total_students"],
                 },
-                "batches": {"active_batches": 8, "total_students": 120},
                 "recent_activity": [
                     {
-                        "type": "CLASS_CREATED",
-                        "message": "BCA-DS-301 class created for Batch 2.",
-                        "created_at": "2026-09-25T10:30:00Z",
-                    },
-                    {
-                        "type": "CLASS_RESCHEDULED",
-                        "message": "DBMS class moved from Room 205 to Room 204.",
-                        "created_at": "2026-09-25T10:15:00Z",
-                    },
-                    {
-                        "type": "CLASS_CANCELLED",
-                        "message": "BCA-DS-301 class cancelled.",
-                        "created_at": "2026-09-25T09:45:00Z",
-                    },
+                        "type": activity.type,
+                        "message": activity.message,
+                        "created_at": activity.created_at,
+                    }
+                    for activity in recent_activity
                 ],
             }
         )
+
+
+class AuditLogs(generics.ListAPIView):
+    permission_classes = [IsAdminUser]
+    queryset = Activity.objects.order_by('-created_at')
+    serializer_class
+    
