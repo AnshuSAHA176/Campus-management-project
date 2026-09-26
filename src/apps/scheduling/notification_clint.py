@@ -15,40 +15,16 @@ from .models import ClassSession
 
 
 @shared_task(bind=True, ignore_result=True)
-def beforeclass(self):
+def beforeclass(self,instance_id):
 
     
-    now = django_timezone.localtime()
+    class_seasion = ClassSession.objects.select_related('teacher').get(id = instance_id)
 
-    print("NOW:", now)
-    print("TIMEZONE:", now.tzinfo)
+    if class_seasion.status != ClassSession.Status.SCHEDULED:
+        return 'class is not longer sheduld'
+    
+    print( class_seasion.teacher.phone)
 
-    target = now + datetime.timedelta(minutes=15)
-
-    start_time = target.time()
-
-    print("Schedule check:", now)
-    print("Looking for classes around:", start_time)
-
-    class_sessions = ClassSession.objects.filter(
-        date=now.date(),
-        start_time__hour=start_time.hour,
-        start_time__minute=start_time.minute,
-        status=ClassSession.Status.SCHEDULED,
-    ).select_related(
-        "batch"
-    ).prefetch_related(
-        "batch__students"
-    )
-
-    for class_session in class_sessions:
-
-        print(
-            f"Class found: {class_session.subject} "
-            f"at {class_session.start_time}"
-        )
-
-        for student in class_session.batch.students.all():
-            print(student.phone)
-
+    print("15 MINUTES BEFORE CLASS")
+    print(class_seasion.id)
     return "done"

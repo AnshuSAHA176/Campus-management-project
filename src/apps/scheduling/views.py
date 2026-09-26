@@ -112,3 +112,40 @@ class ClassSeasionViewset(viewsets.ModelViewSet):
 
 
 
+{
+  "week_start": "2026-09-21",
+  "week_end": "2026-09-27",
+  "days": [
+    {
+      "date": "2026-09-21",
+      "day": "Monday",
+      "classes": [
+        {
+          "id": "uuid",
+          "start_time": "10:00:00",
+          "end_time": "11:00:00",
+          "subject": {
+            "id": 1,
+            "name": "Data Structures",
+            "code": "BCA-DS"
+          },
+          "teacher": {
+            "id": 1,
+            "name": "Dr. Rahul Sharma",
+            "profile_picture": "https://..."
+          },
+          "room": {
+            "id": 1,
+            "name": "Room 204"
+          },
+          "status": "SCHEDULED"
+        }
+      ]
+    },
+    {
+      "date": "2026-09-22",
+      "day": "Tuesday",
+      "classes": []
+    }
+  ]
+}
