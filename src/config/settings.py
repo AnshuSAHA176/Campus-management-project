@@ -52,6 +52,7 @@ INSTALLED_APPS = [
     "apps.account",
     "apps.academics",
     "apps.rooms",
+    'apps.agent',
     "apps.scheduling",
     "cloudinary",
     "silk",
