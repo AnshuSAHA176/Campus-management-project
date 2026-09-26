@@ -237,3 +237,25 @@ class TimetableSerializer(serializers.ModelSerializer):
             "room_name",
             "status",
         ]
+
+
+class AgentSerializer(serializers.ModelSerializer):
+    teacher_name = serializers.CharField(source="teacher.full_name")
+    subject_name = serializers.CharField(source="subject.name")
+    room_name = serializers.CharField(source="room.room_number")
+    batch_name = serializers.CharField(source="batch.name")
+    class Meta:
+        model = ClassSession
+        fields = [
+            "id",
+            "date",
+            "start_time",
+            "end_time",
+            "teacher_name",
+            "subject_name",
+            "room_name",
+            "status",
+            'batch_name'
+        ]
+
+

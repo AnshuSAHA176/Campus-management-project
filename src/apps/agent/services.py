@@ -1,3 +1,4 @@
+from datetime import date
 import requests
 
 
@@ -12,8 +13,32 @@ class Services:
             "Content-Type": "application/json",
         }
 
-    def get_today_schedule(self):
-        responce = requests.get(url=f'{self.base_url}scheduling/'
-                                , headers=self._headers())
-        responce.raise_for_status()
-        return responce.json()
+    def get_schedule(
+    self,
+    schedule_date=None,
+    date_from=None,
+    date_to=None,
+    ):
+        if not schedule_date and not date_from and not date_to:
+            schedule_date = date.today().isoformat()
+
+        params = {}
+
+        if schedule_date:
+            params["date"] = schedule_date
+
+        if date_from:
+            params["date_from"] = date_from
+
+        if date_to:
+            params["date_to"] = date_to
+
+        response = requests.get(
+            f"{self.base_url}scheduling/tools/",
+            headers=self._headers(),
+            params=params,
+        )
+
+        response.raise_for_status()
+
+        return response.json()

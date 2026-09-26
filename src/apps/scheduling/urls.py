@@ -1,7 +1,7 @@
 from rest_framework.routers import DefaultRouter
-from .views import ClassSeasionViewset
-from django.urls import path,include
+from django.urls import path, include
 
+from .views import ClassSeasionViewset, AgentToolsView
 
 
 router = DefaultRouter()
@@ -9,10 +9,10 @@ router = DefaultRouter()
 router.register(
     '',
     ClassSeasionViewset,
-    basename='class Seasion '
-
+    basename='class-session'
 )
 
-urlpatterns=[
-    path('',include(router.urls))
+urlpatterns = [
+    path('tools/', AgentToolsView.as_view(), name='schedule-tools'),
+    path('', include(router.urls)),
 ]

@@ -4,13 +4,19 @@ from rest_framework.permissions import IsAdminUser, BasePermission, IsAuthentica
 from .models import ClassSession
 from apps.account.models import Student, User
 
-from .serializer import ClassSeasionTitleSerializer, ClassSeasionSerializer ,TimetableSerializer
+from .serializer import (
+    ClassSeasionTitleSerializer,
+    ClassSeasionSerializer,
+    TimetableSerializer,
+    AgentSerializer,
+)
 from rest_framework.response import Response
 from django.db import IntegrityError
 from rest_framework import status
 from django_filters.rest_framework import DjangoFilterBackend
 from .filter import ClassSeasionFilter
 from rest_framework.decorators import action
+from rest_framework import generics
 
 
 class IsAdminOrTeacher(BasePermission):
@@ -71,10 +77,10 @@ class ClassSeasionViewset(viewsets.ModelViewSet):
 
     @action(detail=False, methods=["GET"])
     def timetable(self, request):
-       query =  self.filter_queryset(self.get_queryset()).order_by('date','start_time')
+        query = self.filter_queryset(self.get_queryset()).order_by("date", "start_time")
 
-       serializer = TimetableSerializer(query,many= True)
-       return Response(serializer.data)
+        serializer = TimetableSerializer(query, many=True)
+        return Response(serializer.data)
 
     def create(self, request, *args, **kwargs):
         serializer = ClassSeasionSerializer(
@@ -104,29 +110,30 @@ class ClassSeasionViewset(viewsets.ModelViewSet):
         return Response(serializer.data)
 
 
-{
-    "week_start": "2026-09-21",
-    "week_end": "2026-09-27",
-    "days": [
-        {
-            "date": "2026-09-21",
-            "day": "Monday",
-            "classes": [
-                {
-                    "id": "uuid",
-                    "start_time": "10:00:00",
-                    "end_time": "11:00:00",
-                    "subject": {"id": 1, "name": "Data Structures", "code": "BCA-DS"},
-                    "teacher": {
-                        "id": 1,
-                        "name": "Dr. Rahul Sharma",
-                        "profile_picture": "https://...",
-                    },
-                    "room": {"id": 1, "name": "Room 204"},
-                    "status": "SCHEDULED",
-                }
-            ],
-        },
-        {"date": "2026-09-22", "day": "Tuesday", "classes": []},
-    ],
-}
+class AgentToolsView(generics.ListAPIView):
+    permission_classes = [IsAuthenticated]
+    filter_backends = [DjangoFilterBackend]
+    filterset_class = ClassSeasionFilter
+
+    serializer_class = AgentSerializer
+
+    def get_queryset(self):
+
+        user = self.request.user
+
+        queryset = ClassSession.objects.select_related(
+            "subject",
+            "teacher",
+            "batch",
+            "room",
+        )
+
+        if user.role == "student":
+            return queryset.filter(batch=user.student_profile.batch)
+
+        if user.role == "teacher":
+            return queryset.filter(
+                teacher=user.teacher_profile  # i can changed this in future
+            )
+
+        return queryset
