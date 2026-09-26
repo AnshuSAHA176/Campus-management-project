@@ -3,7 +3,7 @@ from rest_framework.permissions import IsAdminUser,BasePermission,IsAuthenticate
 
 from .models import ClassSession
 from apps.account.models import Student,User
-from django.shortcuts import get_object_or_404
+
 from .serializer import ClassSeasionTitleSerializer,ClassSeasionSerializer
 from rest_framework.response import Response
 from django.db import IntegrityError

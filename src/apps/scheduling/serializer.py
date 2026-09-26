@@ -10,7 +10,9 @@ from apps.account.models import Teacher
 from apps.academics.models import Batch
 
 from apps.rooms.models import Room
-from .notification_clint import wanotification
+from .notification_clint import wanotification,beforeclass
+import datetime
+
 
 class ClassSeasionTitleSerializer(serializers.ModelSerializer):
     teacher_picture = serializers.ImageField(source = 'teacher.profile_picture')
@@ -257,11 +259,23 @@ class ClassSeasionSerializer(serializers.ModelSerializer):
         instance = ClassSession.objects.create(
             **validated_data
         )
+        transaction.on_commit(
+                           lambda : wanotification.delay()
+                        )
+        
+
+        notification_time = timezone.make_aware(datetime.datetime.combine(
+            date=instance.date,
+            time=instance.start_time
+        )) - datetime.timedelta(minutes=15)
 
         transaction.on_commit(
-                   lambda : wanotification.delay()
-                )
-
+            lambda: beforeclass.apply_async(
+                args = [instance.id],
+                eta = notification_time
+            )
+        )
+        
         return instance
 
 
