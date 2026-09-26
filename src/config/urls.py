@@ -19,4 +19,5 @@ urlpatterns = [
     path('api/',include('apps.academics.urls')),
     path('room/',include('apps.rooms.urls')),
     path('scheduling/',include('apps.scheduling.urls')),
+    path('silk/', include('silk.urls', namespace='silk')),
 ]

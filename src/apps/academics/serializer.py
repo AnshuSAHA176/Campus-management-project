@@ -12,6 +12,7 @@ class BatchSerializer(serializers.ModelSerializer):
     class Meta:
         model = Batch
         fields = '__all__'
+        
 class SemesterSerializer(serializers.ModelSerializer):
     class Meta:
         model = Semester

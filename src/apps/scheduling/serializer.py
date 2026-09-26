@@ -6,36 +6,29 @@ from apps.academics.models import Subject
 
 from django.db import transaction
 from apps.account.models import Teacher
-
+from django.db.models import Q
 from apps.academics.models import Batch
 
 from apps.rooms.models import Room
-from .notification_clint import wanotification,beforeclass
+from .notification_clint import wanotification, beforeclass
 import datetime
 
 
 class ClassSeasionTitleSerializer(serializers.ModelSerializer):
-    teacher_picture = serializers.ImageField(source = 'teacher.profile_picture')
+    teacher_picture = serializers.ImageField(source="teacher.profile_picture")
+
     class Meta:
         model = ClassSession
-        fields = [
-            'id',
-            'teacher',
-            'room',
-            'start_time',
-            'teacher_picture'
-        ]
-
+        fields = ["id", "teacher", "room", "start_time", "teacher_picture"]
 
 
 class ClassSeasionSerializer(serializers.ModelSerializer):
 
     teacher_picture = serializers.ImageField(
-        source="teacher.profile_picture",
-        read_only=True
+        source="teacher.profile_picture", read_only=True
     )
 
-    class Meta: 
+    class Meta:
         model = ClassSession
         fields = "__all__"
 
@@ -44,16 +37,10 @@ class ClassSeasionSerializer(serializers.ModelSerializer):
 
         request = self.context.get("request")
 
-        if (
-        request
-        and request.user.is_authenticated
-        and request.user.role == "teacher"
-    ):
+        if request and request.user.is_authenticated and request.user.role == "teacher":
             extra_kwargs["teacher"] = {"read_only": True}
 
-        extra_kwargs["created_by"] = {
-            "read_only": True
-        }
+        extra_kwargs["created_by"] = {"read_only": True}
 
         return extra_kwargs
 
@@ -64,49 +51,33 @@ class ClassSeasionSerializer(serializers.ModelSerializer):
             teacher = request.user.teacher_profile
         else:
             teacher = attrs.get(
-                "teacher",
-                self.instance.teacher if self.instance else None
+                "teacher", self.instance.teacher if self.instance else None
             )
 
         # Existing values + PATCH values
-        date = attrs.get(
-            "date",
-            self.instance.date if self.instance else None
-        )
+        date = attrs.get("date", self.instance.date if self.instance else None)
 
         start_time = attrs.get(
-            "start_time",
-            self.instance.start_time if self.instance else None
+            "start_time", self.instance.start_time if self.instance else None
         )
 
         end_time = attrs.get(
-            "end_time",
-            self.instance.end_time if self.instance else None
+            "end_time", self.instance.end_time if self.instance else None
         )
 
-        subject = attrs.get(
-            "subject",
-            self.instance.subject if self.instance else None
-        )
+        subject = attrs.get("subject", self.instance.subject if self.instance else None)
 
-        batch = attrs.get(
-            "batch",
-            self.instance.batch if self.instance else None
-        )
+        batch = attrs.get("batch", self.instance.batch if self.instance else None)
 
-        room = attrs.get(
-            "room",
-            self.instance.room if self.instance else None
-        )
+        room = attrs.get("room", self.instance.room if self.instance else None)
 
         status_value = attrs.get(
-            "status",
-            self.instance.status if self.instance else None
+            "status", self.instance.status if self.instance else None
         )
 
         cancellation_reason = attrs.get(
             "cancellation_reason",
-            self.instance.cancellation_reason if self.instance else ""
+            self.instance.cancellation_reason if self.instance else "",
         )
 
         # -------------------------
@@ -117,10 +88,11 @@ class ClassSeasionSerializer(serializers.ModelSerializer):
             status_value == ClassSession.Status.CANCELLED
             and not cancellation_reason.strip()
         ):
-            raise serializers.ValidationError({
-                "cancellation_reason":
-                    "A cancellation reason is required when cancelling a class."
-            })
+            raise serializers.ValidationError(
+                {
+                    "cancellation_reason": "A cancellation reason is required when cancelling a class."
+                }
+            )
 
         # -------------------------
         # Basic validation
@@ -128,41 +100,26 @@ class ClassSeasionSerializer(serializers.ModelSerializer):
 
         if not request.user.is_staff:
             if date < timezone.now().date():
-                raise serializers.ValidationError(
-                    "Class date cannot be in the past."
-                )
+                raise serializers.ValidationError("Class date cannot be in the past.")
 
-            if (
-                date == timezone.now().date()
-                and start_time < timezone.now().time()
-            ):
-                raise serializers.ValidationError(
-                    "Start time cannot be in the past."
-                )
+            if date == timezone.now().date() and start_time < timezone.now().time():
+                raise serializers.ValidationError("Start time cannot be in the past.")
 
         if start_time >= end_time:
-            raise serializers.ValidationError(
-                "Start time must be before the end time."
-            )
+            raise serializers.ValidationError("Start time must be before the end time.")
 
         # -------------------------
         # Active object validation
         # -------------------------
 
         if not subject.is_active:
-            raise serializers.ValidationError(
-                "Subject is not active."
-            )
+            raise serializers.ValidationError("Subject is not active.")
 
         if not batch.is_active:
-            raise serializers.ValidationError(
-                "Batch is not active."
-            )
+            raise serializers.ValidationError("Batch is not active.")
 
         if not room.is_active:
-            raise serializers.ValidationError(
-                "Room is not active."
-            )
+            raise serializers.ValidationError("Room is not active.")
 
         # -------------------------
         # Department validation
@@ -197,111 +154,75 @@ class ClassSeasionSerializer(serializers.ModelSerializer):
         )
 
         if self.instance:
-            time_overlap = time_overlap.exclude(
-                pk=self.instance.pk
-            )
+            time_overlap = time_overlap.exclude(pk=self.instance.pk)
 
-        if time_overlap.filter(teacher=teacher).exists():
-            raise serializers.ValidationError(
-                "The teacher already has a class during this time."
-            )
+        conflicts = time_overlap.filter(
+            Q(teacher=teacher) | Q(batch=batch) | Q(room=room)
+        ).select_related("teacher", "batch", "room")
 
-        if time_overlap.filter(batch=batch).exists():
-            raise serializers.ValidationError(
-                "The batch already has a class during this time."
-            )
+        for conflict in conflicts:
+            if conflict.teacher_id == teacher.id:
+                raise serializers.ValidationError(
+                    "The teacher already has a class during this time."
+                )
 
-        room_conflict = time_overlap.filter(
-            room=room
-        ).first()
+            if conflict.batch_id == batch.id:
+                raise serializers.ValidationError(
+                    "The batch already has a class during this time."
+                )
 
-        if room_conflict:
-            raise serializers.ValidationError(
-                f"The room is already booked from "
-                f"{room_conflict.start_time} to "
-                f"{room_conflict.end_time}."
-            )
+            if conflict.room_id == room.id:
+                raise serializers.ValidationError(
+                    f"The room is already booked from "
+                    f"{conflict.start_time} to {conflict.end_time}."
+                )
 
-        return attrs    
+        return attrs
+
     @transaction.atomic
     def create(self, validated_data):
 
         request = self.context.get("request")
 
-        
         # Teacher creates class for themselves
         if request.user.role == "teacher":
 
-            validated_data["teacher"] = (
-                request.user.teacher_profile
-            )
+            validated_data["teacher"] = request.user.teacher_profile
 
-        teacher = (
-            Teacher.objects.select_for_update().filter(
-                pk=validated_data['teacher'].pk
-            )
+        teacher = Teacher.objects.select_for_update().filter(
+            pk=validated_data["teacher"].pk
         )
 
-        batch = (
-            Batch.objects.select_for_update().get(
-                pk=validated_data['batch'].pk
-            )
-        )
+        batch = Batch.objects.select_for_update().get(pk=validated_data["batch"].pk)
 
-        room = (
-            Room.objects.select_for_update().get(
-                pk=validated_data['room'].pk
-            )
-        )
+        room = Room.objects.select_for_update().get(pk=validated_data["room"].pk)
 
-        
         # Always set creator from authenticated user
         validated_data["created_by"] = request.user
-        
-        instance = ClassSession.objects.create(
-            **validated_data
-        )
-        transaction.on_commit(
-                           lambda : wanotification.delay()
-                        )
-        
 
-        notification_time = timezone.make_aware(datetime.datetime.combine(
-            date=instance.date,
-            time=instance.start_time
-        )) - datetime.timedelta(minutes=15)
+        instance = ClassSession.objects.create(**validated_data)
+        transaction.on_commit(lambda: wanotification.delay())
+
+        notification_time = timezone.make_aware(
+            datetime.datetime.combine(date=instance.date, time=instance.start_time)
+        ) - datetime.timedelta(minutes=15)
 
         transaction.on_commit(
-            lambda: beforeclass.apply_async(
-                args = [instance.id],
-                eta = notification_time
-            )
+            lambda: beforeclass.apply_async(args=[instance.id], eta=notification_time)
         )
-        
+
         return instance
 
 
 class TimetableSerializer(serializers.ModelSerializer):
 
-    subject_name = serializers.CharField(
-        source="subject.name",
-        read_only=True
-    )
+    subject_name = serializers.CharField(source="subject.name", read_only=True)
 
-    teacher_name = serializers.CharField(
-        source="teacher.full_name",
-        read_only=True
-    )
+    teacher_name = serializers.CharField(source="teacher.full_name", read_only=True)
 
-    batch_name = serializers.CharField(
-        source="batch.name",
-        read_only=True
-    )
+    batch_name = serializers.CharField(source="batch.name", read_only=True)
 
-    room_name = serializers.CharField(
-        source="room.name",
-        read_only=True
-    )
+    room_name = serializers.CharField(source="room.name", read_only=True)
 
     class Meta:
         model = ClassSession
