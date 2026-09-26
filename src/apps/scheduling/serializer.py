@@ -10,6 +10,7 @@ from apps.account.models import Teacher
 from apps.academics.models import Batch
 
 from apps.rooms.models import Room
+from .notification_clint import wanotification
 
 class ClassSeasionTitleSerializer(serializers.ModelSerializer):
     teacher_picture = serializers.ImageField(source = 'teacher.profile_picture')
@@ -252,10 +253,16 @@ class ClassSeasionSerializer(serializers.ModelSerializer):
         
         # Always set creator from authenticated user
         validated_data["created_by"] = request.user
-
-        return ClassSession.objects.create(
+        
+        instance = ClassSession.objects.create(
             **validated_data
         )
+
+        transaction.on_commit(
+                   lambda : wanotification.delay()
+                )
+
+        return instance
 
 
 {
