@@ -44,10 +44,12 @@ class ClassSeasionSerializer(serializers.ModelSerializer):
 
         request = self.context.get("request")
 
-        if request and request.user.role == "teacher":
-            extra_kwargs["teacher"] = {
-                "read_only": True
-            }
+        if (
+        request
+        and request.user.is_authenticated
+        and request.user.role == "teacher"
+    ):
+            extra_kwargs["teacher"] = {"read_only": True}
 
         extra_kwargs["created_by"] = {
             "read_only": True
@@ -279,13 +281,38 @@ class ClassSeasionSerializer(serializers.ModelSerializer):
         return instance
 
 
-{
-  "department": 1,
-  "semester": 3,
-  "subject": 5,
-  "batch": 2,
-  "room": 204,
-  "date": "2026-09-28",
-  "start_time": "10:00",
-  "end_time": "11:00"
-}
+class TimetableSerializer(serializers.ModelSerializer):
+
+    subject_name = serializers.CharField(
+        source="subject.name",
+        read_only=True
+    )
+
+    teacher_name = serializers.CharField(
+        source="teacher.full_name",
+        read_only=True
+    )
+
+    batch_name = serializers.CharField(
+        source="batch.name",
+        read_only=True
+    )
+
+    room_name = serializers.CharField(
+        source="room.name",
+        read_only=True
+    )
+
+    class Meta:
+        model = ClassSession
+        fields = [
+            "id",
+            "date",
+            "start_time",
+            "end_time",
+            "subject_name",
+            "teacher_name",
+            "batch_name",
+            "room_name",
+            "status",
+        ]
