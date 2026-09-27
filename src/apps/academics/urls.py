@@ -5,7 +5,8 @@ from .views import (
     DepartmentViewSet,
     SemesterViewSet,
     BatchViewSet,
-    SubjectViewSet
+    SubjectViewSet,
+    BatchSearchView,
 )
 
 router = DefaultRouter()
@@ -29,12 +30,19 @@ router.register(
 )
 
 router.register(
-    'subject',
+    "subject",
     SubjectViewSet,
-    basename='subject'
-
+    basename="subject",
 )
 
 urlpatterns = [
-    path("", include(router.urls)),
+    path(
+        "batches/search/",
+        BatchSearchView.as_view(),
+        name="batch-search",
+    ),
+    path(
+        "",
+        include(router.urls),
+    ),
 ]

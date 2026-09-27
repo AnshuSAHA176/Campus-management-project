@@ -1,7 +1,7 @@
 from rest_framework.routers import DefaultRouter
 from django.urls import path, include
 
-from .views import ClassSeasionViewset, AgentToolsView
+from .views import ClassSeasionViewset, AgentToolsView,AgentClassScheduleConflict
 
 
 router = DefaultRouter()
@@ -14,5 +14,6 @@ router.register(
 
 urlpatterns = [
     path('tools/', AgentToolsView.as_view(), name='schedule-tools'),
+    path('conflict/', AgentClassScheduleConflict.as_view(), name='schedule-tools'),
     path('', include(router.urls)),
 ]

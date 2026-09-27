@@ -72,4 +72,68 @@ class Services:
         response.raise_for_status()
 
         return response.json()
+    def check_schedule_conflict(
+        self,
+        schedule_date,
+        start_time,
+        end_time,
+        teacher_id=None,
+        batch_id=None,
+        room_id=None,
+    ):
+        params = {
+            "date": schedule_date,
+            "start_time": start_time,
+            "end_time": end_time,
+        }
+
+        if teacher_id:
+            params["teacher_id"] = teacher_id
+
+        if batch_id:
+            params["batch_id"] = batch_id
+
+        if room_id:
+            params["room_id"] = room_id
+
+        response = requests.get(
+            f"{self.base_url}scheduling/conflict/",
+            headers=self._headers(),
+            params=params,
+        )
+
+        response.raise_for_status()
+
+        return response.json()
+    def search_teachers(self, query):
+        response = requests.get(
+            f"{self.base_url}teacher_search/",
+            headers=self._headers(),
+            params={"q": query},
+        )
+
+        response.raise_for_status()
+
+        return response.json()
+    def search_batches(self, query):
+        response = requests.get(
+            f"{self.base_url}api/batches/search/",
+            headers=self._headers(),
+            params={"q": query},
+        )
+
+        response.raise_for_status()
+
+        return response.json()
+    def search_rooms(self, query):
+        response = requests.get(
+            f"{self.base_url}rooms/search/",
+            headers=self._headers(),
+            params={"q": query},
+        )
+
+        response.raise_for_status()
+
+        return response.json()
+
 

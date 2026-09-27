@@ -211,4 +211,25 @@ class AuditLogs(generics.ListAPIView):
     permission_classes = [IsAdminUser]
     queryset = Activity.objects.order_by('-created_at')
     serializer_class = ActivitySerializer
-    
+
+
+class TeacherSearchView(APIView):
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        query = request.query_params.get("q", "").strip()
+
+        if not query:
+            return Response([])
+
+        teachers = Teacher.objects.filter(
+            Q(full_name__icontains=query) |
+            Q(employee_id__icontains=query)
+        ).values(
+            "id",
+            "full_name",
+            "employee_id",
+        )[:10]
+
+        return Response(list(teachers))

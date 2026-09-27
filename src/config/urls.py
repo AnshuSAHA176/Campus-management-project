@@ -17,7 +17,7 @@ urlpatterns = [
         name="swagger-ui",
     ),
     path('api/',include('apps.academics.urls')),
-    path('room/',include('apps.rooms.urls')),
+    path('rooms/',include('apps.rooms.urls')),
     path('scheduling/',include('apps.scheduling.urls')),
     path('agent/',include('apps.agent.urls')),
     path('silk/', include('silk.urls', namespace='silk')),

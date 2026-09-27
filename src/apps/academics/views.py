@@ -1,7 +1,10 @@
 from rest_framework import viewsets
 from .models import Department,Batch,Semester,Subject
-from rest_framework.permissions import IsAdminUser
+from rest_framework.permissions import IsAdminUser,IsAuthenticated
 from .serializer import DepartmentSerializer,BatchSerializer,SemesterSerializer,SubjectSerializer
+from rest_framework.response import Response
+from rest_framework.views import APIView
+from django.db.models import Q
 
 
 class DepartmentViewSet(viewsets.ModelViewSet):
@@ -29,3 +32,22 @@ class SubjectViewSet(viewsets.ModelViewSet):
                                               
 
     serializer_class = SubjectSerializer
+
+class BatchSearchView(APIView):
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        query = request.query_params.get("q", "").strip()
+
+        if not query:
+            return Response([])
+
+        batches = Batch.objects.filter(
+            Q(name__icontains=query)
+        ).values(
+            "id",
+            "name",
+        )[:10]
+
+        return Response(list(batches))

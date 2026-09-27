@@ -18,8 +18,23 @@ def get_agent(access_token):
 
     graph_builder = StateGraph(State)
 
-    get_today_schedule,get_available_rooms = Tools(access_token)
-    tools = [get_today_schedule,get_available_rooms]
+    (
+        get_today_schedule,
+        get_available_rooms,
+        check_schedule_conflict,
+        search_teachers,
+        search_batches,
+        search_rooms,
+    ) = Tools(access_token)
+
+    tools = [
+        get_today_schedule,
+        get_available_rooms,
+        check_schedule_conflict,
+        search_teachers,
+        search_batches,
+        search_rooms,
+    ]
     model_with_tool = model.bind_tools(tools)
 
     def domain_classifier_node(state: State):

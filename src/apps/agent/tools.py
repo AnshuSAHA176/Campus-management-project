@@ -66,5 +66,115 @@ def Tools(access_token):
 
         return json.dumps(result)
 
-        
-    return get_schedule,get_available_rooms
+    @tool
+    def check_schedule_conflict(
+        schedule_date: str,
+        start_time: str,
+        end_time: str,
+        teacher_id: Optional[str] = None,
+        batch_id: Optional[str] = None,
+        room_id: Optional[str] = None,
+    ):
+        """
+    Check whether a proposed class schedule conflicts with
+    an existing teacher, batch, or room schedule.
+
+    The agent must resolve teacher, batch, and room names to
+    their IDs using the search tools before calling this tool.
+
+    If the user provides only a start time, the agent should
+    assume a 1-hour class and calculate the end time.
+    """
+
+        if not schedule_date:
+            return "schedule_date is required."
+
+        if not start_time:
+            return "start_time is required."
+
+        if not end_time:
+            return "end_time is required."
+
+        if not teacher_id:
+            return "teacher_id is required."
+
+        if not batch_id:
+            return "batch_id is required."
+
+        if not room_id:
+            return "room_id is required."
+
+        result = services.check_schedule_conflict(
+            schedule_date=schedule_date,
+            start_time=start_time,
+            end_time=end_time,
+            teacher_id=teacher_id,
+            batch_id=batch_id,
+            room_id=room_id,
+        )
+
+        if not result:
+            return "No conflict information was returned."
+
+        return json.dumps(result, default=str)
+    @tool
+    def search_teachers(query: str):
+        """
+        Search for teachers by name or employee ID.
+
+        Use this when the user mentions a teacher by name or employee ID
+        and the teacher's database ID is needed for another operation.
+
+        Example:
+        search_teachers("Bikash")
+        """
+
+        result = services.search_teachers(query)
+
+        if not result:
+            return "No teacher found matching the search."
+
+        return json.dumps(result, default=str)
+
+
+    @tool
+    def search_batches(query: str):
+        """
+        Search for batches by batch name.
+
+        Use this when the user mentions a batch such as BCA-3B
+        and the batch's database ID is needed.
+
+        Example:
+        search_batches("BCA-3B")
+        """
+
+        result = services.search_batches(query)
+
+        if not result:
+            return "No batch found matching the search."
+
+        return json.dumps(result, default=str)
+
+
+    @tool
+    def search_rooms(query: str):
+        """
+        Search for rooms by room number or floor.
+
+        Use this when the user mentions a room such as Room 301
+        and the room's database ID is needed.
+
+        Example:
+        search_rooms("301")
+        """
+
+        result = services.search_rooms(query)
+
+        if not result:
+            return "No room found matching the search."
+
+        return json.dumps(result, default=str)
+
+
+    return get_schedule,get_available_rooms,check_schedule_conflict,search_teachers,search_batches,search_rooms
