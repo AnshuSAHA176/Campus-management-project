@@ -37,5 +37,34 @@ def Tools(access_token):
             return "No classes found for the requested date or date range."
 
         return json.dumps(result)
+    
 
-    return get_schedule
+
+
+    @tool
+    def get_available_rooms(
+        schedule_date: str,
+        start_time: str,
+        end_time: str,
+    ):
+        """
+        Find rooms available for a specific date and time range.
+
+        schedule_date: Date in YYYY-MM-DD format.
+        start_time: Start time in HH:MM:SS format.
+        end_time: End time in HH:MM:SS format.
+
+        Returns rooms that are active and not occupied by a scheduled
+        class during the requested time.
+        """
+
+        result =  services.get_avalable_rooms(
+            schedule_date=schedule_date,
+            start_time=start_time,
+            end_time=end_time,
+        )
+
+        return json.dumps(result)
+
+        
+    return get_schedule,get_available_rooms

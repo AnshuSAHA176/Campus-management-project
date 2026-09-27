@@ -12,6 +12,7 @@ from apps.academics.models import Batch
 from apps.rooms.models import Room
 from .notification_clint import wanotification, beforeclass
 import datetime
+from apps.rooms.models import Room
 
 
 class ClassSeasionTitleSerializer(serializers.ModelSerializer):
@@ -244,6 +245,7 @@ class AgentSerializer(serializers.ModelSerializer):
     subject_name = serializers.CharField(source="subject.name")
     room_name = serializers.CharField(source="room.room_number")
     batch_name = serializers.CharField(source="batch.name")
+
     class Meta:
         model = ClassSession
         fields = [
@@ -255,7 +257,16 @@ class AgentSerializer(serializers.ModelSerializer):
             "subject_name",
             "room_name",
             "status",
-            'batch_name'
+            "batch_name",
         ]
 
 
+class RoomSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Room
+        fields = [
+            "department",
+            "room_number",
+            "floor",
+            "capacity",
+        ]

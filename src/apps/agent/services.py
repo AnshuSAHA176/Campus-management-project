@@ -39,6 +39,37 @@ class Services:
             params=params,
         )
 
+        
+
+        return response.json()
+    def get_avalable_rooms(
+    self,
+    schedule_date=None,
+    start_time=None,
+    end_time=None,
+    ):
+        if not schedule_date and not start_time and not end_time:
+            schedule_date = date.today().isoformat()
+
+        params = {}
+
+        if schedule_date:
+            params["date"] = schedule_date
+
+        if start_time:
+            params["start_time"] = start_time
+
+
+        if end_time:
+            params["end_time"] = end_time
+
+        response = requests.get(
+            f"{self.base_url}scheduling/available-rooms/",
+            headers=self._headers(),
+            params=params,
+        )
+
         response.raise_for_status()
 
         return response.json()
+

@@ -18,14 +18,14 @@ def get_agent(access_token):
 
     graph_builder = StateGraph(State)
 
-    get_today_schedule = Tools(access_token)
-    tools = [get_today_schedule]
+    get_today_schedule,get_available_rooms = Tools(access_token)
+    tools = [get_today_schedule,get_available_rooms]
     model_with_tool = model.bind_tools(tools)
 
     def domain_classifier_node(state: State):
 
         human_messages = [
-            message for message in state["messages"] if message.type == "humman"
+            message for message in state.messages if message.type == "human"
         ]
 
         recent_human_messages = human_messages[-3:]
@@ -37,7 +37,7 @@ def get_agent(access_token):
         return {"domain": domain}
 
     def domain_router(state: State):
-        domain = state["domain"]
+        domain = state.domain
         if domain != "campus":
             return "offtopic"
         return "ontopic"
@@ -59,18 +59,19 @@ def get_agent(access_token):
         return {"messages": [model_with_tool.invoke(state.messages)]}
 
     graph_builder.add_node("domain_classifier", domain_classifier_node)
-    graph_builder.add_node("domain_router", domain_router)
+
     graph_builder.add_node("reject", reject_topic)
     graph_builder.add_node("agent", agent)
     graph_builder.add_node("tools", ToolNode(tools))
+    # edges
 
     graph_builder.add_edge(START, "domain_classifier")
-    graph_builder.add_edge("domain_classifier", "domain_router")
+
     graph_builder.add_conditional_edges(
-        "domain_router", {"offtopic": "reject", "ontopic": "agent"}
+        "domain_classifier", domain_router, {"offtopic": "reject", "ontopic": "agent"}
     )
 
-    graph_builder.add_edge("reject",END)
+    graph_builder.add_edge("reject", END)
     graph_builder.add_conditional_edges("agent", tools_condition)
     graph_builder.add_edge("tools", "agent")
 

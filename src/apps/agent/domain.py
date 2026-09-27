@@ -15,87 +15,121 @@ class Domain(BaseModel):
 def domain_classifier(message: str):
 
     prompt = f"""
-You are a domain classifier for a Campus Management System.
+You are a strict domain classifier for a Campus Management System.
 
-Your task is to classify the user's message into exactly one of these domains:
+Classify the user's message into exactly one of:
 
-1. "campus"
-   Use this when the user is asking about anything related to the
-   campus management system, including:
+- "campus"
+- "unknown"
 
-   - Class schedules
-   - Timetables
-   - Teachers
-   - Students
-   - Subjects
-   - Batches or sections
-   - Classrooms or rooms
-   - Room availability
-   - Class creation
-   - Class cancellation
-   - Class rescheduling
-   - Schedule conflicts
-   - Teacher schedules
-   - Student schedules
-   - Room schedules
-   - Department schedules
-   - Campus notifications
-   - Campus activities
-   - Any other functionality or information directly related to
-     the campus management system.
+Return ONLY valid JSON:
+{{"domain": "campus"}}
+or
+{{"domain": "unknown"}}
 
-2. "unknown"
-   Use this when the message is unrelated to the campus management
-   system.
+========================
+CAMPUS DOMAIN
+========================
+
+Classify as "campus" if the user asks about ANYTHING related to
+campus management, including:
+
+- today's schedule
+- today's schedules
+- today's classes
+- today classes
+- today's timetable
+- timetable
+- class schedule
+- class schedules
+- tomorrow's classes
+- classes on a specific date
+- weekly schedule
+- teacher schedule
+- student schedule
+- batch schedule
+- room schedule
+- available rooms
+- room availability
+- teachers
+- students
+- subjects
+- batches
+- classrooms
+- departments
+- class creation
+- class cancellation
+- class rescheduling
+- scheduling conflicts
+- teacher conflicts
+- room conflicts
+- batch conflicts
 
 Examples:
 
-User: "What classes do I have today?"
-Output:
-{{"domain": "campus"}}
+"Show me all of today's schedules"
+→ {{"domain": "campus"}}
 
-User: "Is Room 204 free tomorrow at 10 AM?"
-Output:
-{{"domain": "campus"}}
+"show me all of today schedules"
+→ {{"domain": "campus"}}
 
-User: "Show me the BCA-3B timetable."
-Output:
-{{"domain": "campus"}}
+"What classes do I have today?"
+→ {{"domain": "campus"}}
 
-User: "Can Bikash take a class tomorrow at 2 PM?"
-Output:
-{{"domain": "campus"}}
+"Show my timetable"
+→ {{"domain": "campus"}}
 
-User: "What's the weather today?"
-Output:
-{{"domain": "unknown"}}
+"What classes are tomorrow?"
+→ {{"domain": "campus"}}
 
-User: "Explain Python decorators."
-Output:
-{{"domain": "unknown"}}
+"Is room 204 available at 10 AM?"
+→ {{"domain": "campus"}}
 
-User: "Write me a poem."
-Output:
-{{"domain": "unknown"}}
+"Show me Bikash's schedule"
+→ {{"domain": "campus"}}
 
-IMPORTANT RULES:
-- Return ONLY valid JSON.
-- The JSON must contain exactly one field: "domain".
-- The value must be exactly "campus" or "unknown".
-- Do not include markdown.
-- Do not include explanations.
-- Do not include additional fields.
+"Can I schedule a class tomorrow?"
+→ {{"domain": "campus"}}
 
-User message:
+========================
+UNKNOWN DOMAIN
+========================
+
+Classify as "unknown" if the request is unrelated to campus management.
+
+Examples:
+
+"What is the weather today?"
+→ {{"domain": "unknown"}}
+
+"Explain Python decorators"
+→ {{"domain": "unknown"}}
+
+"Write a poem"
+→ {{"domain": "unknown"}}
+
+"Who is Elon Musk?"
+→ {{"domain": "unknown"}}
+
+========================
+IMPORTANT
+========================
+
+- Focus on the user's INTENT, not perfect grammar.
+- Small spelling or grammar mistakes must NOT change the classification.
+- "today schedules", "today's schedules", and "today schedule" all mean
+  the same campus scheduling intent.
+- Never return anything except the JSON object.
+- Never add explanations.
+
+USER MESSAGE:
 {message}
 """
 
     model = get_model()
-
     response = model.invoke(prompt)
 
     data = json.loads(response.content)
-
     result = Domain.model_validate(data)
 
     return result.domain
