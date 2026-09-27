@@ -10,6 +10,7 @@ from .serializer import (
     TimetableSerializer,
     AgentSerializer,
     RoomSerializer,
+    TeacherSecheduleSerializer,
 )
 from rest_framework.response import Response
 from django.db import IntegrityError
@@ -141,6 +142,60 @@ class ClassSeasionViewset(viewsets.ModelViewSet):
         serializer = RoomSerializer(rooms, many=True)
 
         return Response(serializer.data)
+
+    @action(
+        detail=False,
+        methods=["GET"],
+        url_path="teacher-schedule",
+    )
+    def teacher_schedule(self, request):
+        
+        teacher_id = request.query_params.get("teacher_id")
+        date = request.query_params.get("date")
+
+        if not teacher_id:
+            if request.user.role == "teacher":
+                teacher_id = request.user.teacher_profile.id
+            else:
+                return Response(
+                    {"error": "teacher_id is required"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+
+        if not date:
+            return Response(
+                {"error": "date is required"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        class_sessions = (
+            ClassSession.objects.select_related(
+                "teacher",
+                "subject",
+                "batch",
+                "room",
+            )
+            .filter(
+                teacher_id=teacher_id,
+                date=date,
+                status=ClassSession.Status.SCHEDULED,
+            )
+            .order_by("start_time")
+        )
+
+        serializer = TeacherSecheduleSerializer(
+            class_sessions,
+            many=True,
+        )
+
+        return Response(
+            {
+                "teacher_id": teacher_id,
+                "date": date,
+                "classes": serializer.data,
+            }
+        )
 
 
 class AgentToolsView(generics.ListAPIView):

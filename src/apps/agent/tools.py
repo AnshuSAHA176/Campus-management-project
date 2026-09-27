@@ -1,8 +1,7 @@
 from langchain.tools import tool
 from .services import Services
 from typing import Optional
-import json 
-
+import json
 
 BASE_URL = "http://127.0.0.1:8000/"
 
@@ -28,18 +27,15 @@ def Tools(access_token):
         Dates must use YYYY-MM-DD format.
         """
         result = services.get_schedule(
-    schedule_date=schedule_date,
-    date_from=date_from,
-    date_to=date_to,
-)
+            schedule_date=schedule_date,
+            date_from=date_from,
+            date_to=date_to,
+        )
 
         if not result:
             return "No classes found for the requested date or date range."
 
         return json.dumps(result)
-    
-
-
 
     @tool
     def get_available_rooms(
@@ -58,7 +54,7 @@ def Tools(access_token):
         class during the requested time.
         """
 
-        result =  services.get_avalable_rooms(
+        result = services.get_avalable_rooms(
             schedule_date=schedule_date,
             start_time=start_time,
             end_time=end_time,
@@ -76,15 +72,15 @@ def Tools(access_token):
         room_id: Optional[str] = None,
     ):
         """
-    Check whether a proposed class schedule conflicts with
-    an existing teacher, batch, or room schedule.
+        Check whether a proposed class schedule conflicts with
+        an existing teacher, batch, or room schedule.
 
-    The agent must resolve teacher, batch, and room names to
-    their IDs using the search tools before calling this tool.
+        The agent must resolve teacher, batch, and room names to
+        their IDs using the search tools before calling this tool.
 
-    If the user provides only a start time, the agent should
-    assume a 1-hour class and calculate the end time.
-    """
+        If the user provides only a start time, the agent should
+        assume a 1-hour class and calculate the end time.
+        """
 
         if not schedule_date:
             return "schedule_date is required."
@@ -117,6 +113,7 @@ def Tools(access_token):
             return "No conflict information was returned."
 
         return json.dumps(result, default=str)
+
     @tool
     def search_teachers(query: str):
         """
@@ -135,7 +132,6 @@ def Tools(access_token):
             return "No teacher found matching the search."
 
         return json.dumps(result, default=str)
-
 
     @tool
     def search_batches(query: str):
@@ -156,7 +152,6 @@ def Tools(access_token):
 
         return json.dumps(result, default=str)
 
-
     @tool
     def search_rooms(query: str):
         """
@@ -176,5 +171,71 @@ def Tools(access_token):
 
         return json.dumps(result, default=str)
 
+    @tool
+    def teacher_schedule(
+        teacher_id: int | None,
+        schedule_date: str,
+    ):
+        """
+        Get a teacher's class schedule for a specific date.
 
-    return get_schedule,get_available_rooms,check_schedule_conflict,search_teachers,search_batches,search_rooms
+        If the authenticated user is a teacher and asks for their own
+        schedule, teacher_id can be None.
+
+        If the user is an admin or another non-teacher and asks for a
+        teacher's schedule, teacher_id is required. The agent must first
+        use search_teachers to resolve the teacher's name to an ID.
+
+        Never call this tool with teacher_id=None for an admin.
+
+        Args:
+            teacher_id:
+                Teacher database ID. Can be None only for a teacher
+                requesting their own schedule.
+
+            schedule_date:
+                Date in YYYY-MM-DD format.
+        """
+
+        if teacher_id is None:
+            return (
+                "A teacher name is required. "
+                "Use search_teachers to find the teacher first."
+            )
+
+        result = services.teacher_schedule(
+            teacher_id=teacher_id,
+            schedule_date=schedule_date,
+        )
+
+        return json.dumps(result, default=str)
+
+    @tool
+    def find_available_rooms(
+        schedule_date: str | None = None,
+        start_time: str | None = None,
+        end_time: str | None = None,
+    ):
+        """
+        Find rooms that are available for the requested date and time.
+
+        If schedule_date is not provided, use today's date.
+        Dates must use YYYY-MM-DD format.
+        Times must use HH:MM:SS format.
+        """
+        result = services.room_avalable(
+            schedule_date=schedule_date, start_time=start_time, end_time=end_time
+        )
+
+        return json.dumps(result,default=str)
+
+    return (
+        get_schedule,
+        get_available_rooms,
+        check_schedule_conflict,
+        search_teachers,
+        search_batches,
+        search_rooms,
+        teacher_schedule,
+        find_available_rooms
+    )

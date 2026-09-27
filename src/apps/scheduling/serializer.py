@@ -270,3 +270,21 @@ class RoomSerializer(serializers.ModelSerializer):
             "floor",
             "capacity",
         ]
+
+class TeacherSecheduleSerializer(serializers.ModelSerializer):
+    subject_name = serializers.CharField(source = 'subject.name')
+    batch_name = serializers.CharField(source = 'batch.name')
+    room_num = serializers.CharField(source = 'room.room_number')
+    class Meta:
+        model = ClassSession
+        fields =[
+            'id',
+            'date',
+            'start_time',
+            'end_time',
+            'subject_name',
+            'batch_name',
+            'room_num',
+            'status'
+        ]
+

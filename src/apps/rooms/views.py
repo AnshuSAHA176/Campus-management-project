@@ -1,14 +1,15 @@
 from rest_framework import viewsets
-from rest_framework.permissions import IsAdminUser,IsAuthenticated
+from rest_framework.permissions import IsAdminUser, IsAuthenticated
 from .models import Room
-from .serializer import RoomSerializer
+from .serializer import RoomSerializer,RoomAvalableSerializer
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from django.db.models import Q
 
+
 class RoomView(viewsets.ModelViewSet):
     permission_classes = [IsAdminUser]
-    queryset = Room.objects.select_related('department')
+    queryset = Room.objects.select_related("department")
     serializer_class = RoomSerializer
 
 
@@ -23,12 +24,37 @@ class RoomSearchView(APIView):
             return Response([])
 
         rooms = Room.objects.filter(
-            Q(room_number__icontains=query) |
-            Q(floor__icontains=query)
-        ).values(
-            "id",
-            "room_number",
-            "floor",
-        )[:10]
+            Q(room_number__icontains=query) | Q(floor__icontains=query)
+        ).values("id", "room_number", "floor",)[:10]
 
         return Response(list(rooms))
+
+
+class AvalableRoom(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        date = request.query_params.get("date")
+        start_time = request.query_params.get("start_time")
+        end_time = request.query_params.get("end_time")
+
+        if not date:
+            return Response({"error": "Please provide the date"})
+        if not start_time:
+            return Response({"error": "Please provide the start time"})
+        if not end_time:
+            return Response({"error": "Please provide the end time"})
+        
+
+        avalable_room = Room.objects.prefetch_related('class_sessions').filter(
+            class_sessions__date=date,
+            class_sessions__start_time__lt=end_time,
+            class_sessions__end_time__gt=start_time,
+            is_active = True
+            
+        )
+        return Response(RoomAvalableSerializer(avalable_room,many=True).data)
+
+
+
+        

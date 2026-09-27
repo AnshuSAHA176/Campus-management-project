@@ -14,10 +14,10 @@ class Services:
         }
 
     def get_schedule(
-    self,
-    schedule_date=None,
-    date_from=None,
-    date_to=None,
+        self,
+        schedule_date=None,
+        date_from=None,
+        date_to=None,
     ):
         if not schedule_date and not date_from and not date_to:
             schedule_date = date.today().isoformat()
@@ -39,14 +39,13 @@ class Services:
             params=params,
         )
 
-        
-
         return response.json()
+
     def get_avalable_rooms(
-    self,
-    schedule_date=None,
-    start_time=None,
-    end_time=None,
+        self,
+        schedule_date=None,
+        start_time=None,
+        end_time=None,
     ):
         if not schedule_date and not start_time and not end_time:
             schedule_date = date.today().isoformat()
@@ -58,7 +57,6 @@ class Services:
 
         if start_time:
             params["start_time"] = start_time
-
 
         if end_time:
             params["end_time"] = end_time
@@ -72,6 +70,7 @@ class Services:
         response.raise_for_status()
 
         return response.json()
+
     def check_schedule_conflict(
         self,
         schedule_date,
@@ -105,6 +104,7 @@ class Services:
         response.raise_for_status()
 
         return response.json()
+
     def search_teachers(self, query):
         response = requests.get(
             f"{self.base_url}teacher_search/",
@@ -115,6 +115,7 @@ class Services:
         response.raise_for_status()
 
         return response.json()
+
     def search_batches(self, query):
         response = requests.get(
             f"{self.base_url}api/batches/search/",
@@ -125,6 +126,7 @@ class Services:
         response.raise_for_status()
 
         return response.json()
+
     def search_rooms(self, query):
         response = requests.get(
             f"{self.base_url}rooms/search/",
@@ -136,4 +138,52 @@ class Services:
 
         return response.json()
 
+    def teacher_schedule(self, teacher_id, schedule_date):
+        params = {
+            "date": schedule_date,
+        }
 
+        if teacher_id is not None:
+            params["teacher_id"] = teacher_id
+
+        response = requests.get(
+            f"{self.base_url}scheduling/teacher-schedule/",
+            headers=self._headers(),
+            params=params,
+        )
+
+        if response.status_code == 400:
+            return response.json()
+
+        response.raise_for_status()
+
+        return response.json()
+
+    def room_avalable(self, schedule_date, start_time, end_time):
+         if not schedule_date and not start_time and not end_time:
+                    schedule_date = date.today().isoformat()
+        
+         params = {}
+        
+         if schedule_date:
+                params["date"] = schedule_date
+        
+         if start_time:
+                params["start_time"] = start_time
+        
+         if end_time:
+                params["end_time"] = end_time
+
+
+         response = requests.get(
+            f"{self.base_url}rooms/avalable/",
+            headers=self._headers(),
+            params=params,
+        )
+
+         if response.status_code == 400:
+            return response.json()
+
+         response.raise_for_status()
+
+         return response.json()

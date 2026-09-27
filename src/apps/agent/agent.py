@@ -6,8 +6,10 @@ from .llm import get_model
 from langgraph.prebuilt import ToolNode, tools_condition
 from .domain import domain_classifier
 from langchain.messages import HumanMessage, AIMessage
+from langgraph.checkpoint.memory import InMemorySaver
 
 
+cheakpointer = InMemorySaver()
 def get_agent(access_token):
     model = get_model()
 
@@ -25,6 +27,8 @@ def get_agent(access_token):
         search_teachers,
         search_batches,
         search_rooms,
+        teacher_schedule,
+        find_available_rooms,
     ) = Tools(access_token)
 
     tools = [
@@ -34,6 +38,8 @@ def get_agent(access_token):
         search_teachers,
         search_batches,
         search_rooms,
+        teacher_schedule,
+        find_available_rooms
     ]
     model_with_tool = model.bind_tools(tools)
 
@@ -90,4 +96,4 @@ def get_agent(access_token):
     graph_builder.add_conditional_edges("agent", tools_condition)
     graph_builder.add_edge("tools", "agent")
 
-    return graph_builder.compile()
+    return graph_builder.compile(checkpointer=cheakpointer)
