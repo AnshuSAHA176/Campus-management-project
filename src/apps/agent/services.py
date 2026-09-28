@@ -39,7 +39,15 @@ class Services:
             params=params,
         )
 
+        print("STATUS:", response.status_code)
+        print("URL:", response.url)
+        print("CONTENT TYPE:", response.headers.get("Content-Type"))
+        print("BODY:", response.text[:500])
+
+        response.raise_for_status()
+
         return response.json()
+        
 
     def get_avalable_rooms(
         self,

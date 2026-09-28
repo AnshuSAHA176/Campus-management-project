@@ -56,9 +56,11 @@ INSTALLED_APPS = [
     "apps.scheduling",
     "cloudinary",
     "silk",
+     "corsheaders",
 ]
 
 MIDDLEWARE = [
+    "corsheaders.middleware.CorsMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -207,3 +209,10 @@ CELERY_RESULT_BACKEND = "redis://127.0.0.1:6379/1"
 
 TIME_ZONE = "Asia/Kolkata"
 USE_TZ = True
+
+CORS_ALLOWED_ORIGINS = [
+    "https://casting-showcase-respect-situated.trycloudflare.com",
+    "http://localhost:3000",  # Your local React/Vue dev server
+    "http://127.0.0.1:3000",
+    "https://yourfrontenddomain.com",
+]
