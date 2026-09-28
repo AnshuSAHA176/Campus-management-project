@@ -29,6 +29,7 @@ def get_agent(access_token):
         search_rooms,
         teacher_schedule,
         find_available_rooms,
+        search_subjects,
     ) = Tools(access_token)
 
     tools = [
@@ -39,7 +40,8 @@ def get_agent(access_token):
         search_batches,
         search_rooms,
         teacher_schedule,
-        find_available_rooms
+        find_available_rooms,
+        search_subjects,
     ]
     model_with_tool = model.bind_tools(tools)
 

@@ -187,3 +187,14 @@ class Services:
          response.raise_for_status()
 
          return response.json()
+
+    def search_subjects(self, query):
+        response = requests.get(
+            f"{self.base_url}api/subject/search/",
+            headers=self._headers(),
+            params={"q": query},
+        )
+
+        response.raise_for_status()
+
+        return response.json()

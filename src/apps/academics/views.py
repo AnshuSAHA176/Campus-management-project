@@ -51,3 +51,19 @@ class BatchSearchView(APIView):
         )[:10]
 
         return Response(list(batches))
+
+class SubjectSearch(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self,request):
+        query = request.query_params.get("q","").strip()
+
+        if not query:
+                return Response([])
+
+        subject = Subject.objects.filter(
+            Q(name__icontains = query)|
+            Q(code__icontains = query)
+        ).values_list('id','name','code')[:10]
+        print(subject)
+        return Response(list(subject))

@@ -1,163 +1,968 @@
-# 🎓 Campus Management & Scheduling System
+# Campus Management System API Documentation
 
-A production-oriented backend for managing **students, teachers, subjects, batches, classrooms, class schedules, timetables, notifications, conflicts, and administrative operations**.
+This project is a Django + DRF backend for a campus management system. It supports:
+- Student, teacher, admin, and HOD authentication
+- Academic management (departments, semesters, batches, subjects)
+- Room management
+- Class scheduling
+- Scheduling conflict detection
+- Real-time notifications via WebSockets
+- Background jobs with Celery
+- Admin dashboard and audit logs
+- AI agent integration for campus-related questions
 
-Built with **Django REST Framework, PostgreSQL, Redis, Django Channels, Celery, JWT Authentication, Docker, and OpenAPI/Swagger**.
+Base URL:
+- Local dev: http://127.0.0.1:8000
+- API docs: http://127.0.0.1:8000/docs/
+- OpenAPI schema: http://127.0.0.1:8000/schema/
 
----
+Authentication:
+- Use JWT bearer tokens.
+- Header:
+  Authorization: Bearer <access_token>
 
-## ✨ Overview
-
-The Campus Management & Scheduling System is designed to solve the problems that occur when managing academic schedules manually.
-
-It provides a centralized backend where administrators and teachers can:
-
-- Manage students and teachers
-- Manage batches, subjects, and rooms
-- Schedule classes
-- Detect scheduling conflicts automatically
-- Manage cancellations and rescheduling
-- Generate student, teacher, and admin timetables
-- Track administrative activities
-- Send real-time notifications
-- Schedule background tasks
-- Monitor campus-level scheduling information
-
-The system is designed around **database-level consistency**, role-based access control, asynchronous processing, and real-time communication.
-
----
-
-# 🚀 Features
-
-## 🔐 Authentication & Authorization
-
-- JWT-based authentication
-- Custom Django User model
-- Email-based login
-- Role-based access control
-- Supported roles:
-  - 👨‍🎓 Student
-  - 👨‍🏫 Teacher
-  - 👨‍💼 Admin
-  - 🏛️ HOD
+Important note:
+- Most protected endpoints require a valid login.
+- Admin-only routes require `is_staff == True`.
+- Teacher-specific routes require `request.user.role == "teacher"`.
 
 ---
 
-## 👨‍🎓 Student Management
-
-Administrators can manage:
-
-- Student profiles
-- Student IDs
-- Batch assignment
-- Contact information
-- Enrollment information
-- Profile pictures
-
-Students automatically see classes associated with their assigned batch.
-
----
-
-## 👨‍🏫 Teacher Management
-
-Teacher management includes:
-
-- Employee ID
-- Teacher profile
-- Department
-- Designation
-- Contact information
-- Profile picture
-
-Teachers can access their own scheduled classes and timetable.
-
----
-
-## 📚 Academic Management
-
-The system supports management of:
-
-- Departments
-- Subjects
-- Batches
-- Sections
-- Students
-- Teachers
-
----
-
-# 🗓️ Smart Class Scheduling
-
-Classes are represented by `ClassSession`.
-
-Each class contains:
+# 1. Project Structure
 
 ```text
-Subject
-Teacher
-Batch
-Room
-Date
-Start Time
-End Time
-Status
-Created By
-```
-
-Supported class states include:
-
-```text
-SCHEDULED
-CANCELLED
+src/
+├── manage.py
+├── config/
+│   ├── settings.py
+│   ├── urls.py
+│   ├── asgi.py
+│   ├── celery.py
+│   └── wsgi.py
+├── compus_management_system/
+│   └── __init__.py
+├── apps/
+│   ├── account/
+│   │   ├── models.py        # User, Student, Teacher
+│   │   ├── serializer.py     # Auth + profile serializers
+│   │   ├── views.py         # Login/register/profile/dashboard endpoints
+│   │   ├── urls.py          # Auth routes
+│   │   ├── signals.py       # Creates Student/Teacher profile on user creation
+│   │   └── custom_manager.py
+│   ├── academics/
+│   │   ├── models.py        # Department, Semester, Batch, Subject
+│   │   ├── serializer.py
+│   │   ├── views.py
+│   │   └── urls.py
+│   ├── rooms/
+│   │   ├── models.py        # Room model
+│   │   ├── serializer.py
+│   │   ├── views.py
+│   │   └── urls.py
+│   ├── scheduling/
+│   │   ├── models.py        # ClassSession + Activity
+│   │   ├── serializer.py
+│   │   ├── views.py
+│   │   ├── urls.py
+│   │   ├── signal.py        # Notifications & activity tracking
+│   │   ├── consumers.py     # WebSocket notification consumer
+│   │   ├── aut_middlewere.py # JWT for WebSockets
+│   │   ├── notification_clint.py
+│   │   └── filter.py
+│   ├── agent/
+│   │   ├── agent.py
+│   │   ├── tools.py
+│   │   ├── llm.py
+│   │   ├── services.py
+│   │   ├── views.py
+│   │   └── urls.py
+│   └── __init__.py
+└── manage.py
 ```
 
 ---
 
-# 🛡️ Conflict Detection
+# 2. Roles and Permissions
 
-One of the core features is automatic scheduling conflict detection.
+Supported roles:
 
-The system prevents:
+- student
+- teacher
+- admin
+- hod
 
-### 👨‍🏫 Teacher Conflicts
-
-A teacher cannot have two classes at the same time.
-
-### 👨‍🎓 Batch Conflicts
-
-A batch cannot have two classes at the same time.
-
-### 🏫 Room Conflicts
-
-A classroom cannot be assigned to two overlapping classes.
-
-### 🔒 Database-Level Protection
-
-Scheduling conflicts are enforced using PostgreSQL exclusion constraints.
-
-This means conflict protection doesn't rely only on application-level validation.
-
-Even concurrent requests are protected by the database.
+Role behavior:
+- Student:
+  - Can view own classes and timetable
+  - Can view own profile
+  - Cannot create/update schedules
+- Teacher:
+  - Can view own schedule
+  - Can create or update class schedules
+  - Can cancel classes
+- Admin / HOD:
+  - Can manage academic data, rooms, and schedules
+  - Can view dashboard and activity logs
 
 ---
 
-# 🔄 Rescheduling & Cancellation
+# 3. Core Data Models
 
-Existing classes can be modified using the existing class-session API.
+## 3.1 User
 
-### Reschedule
+Model: `apps.account.models.User`
 
+Fields:
+- id: UUID
+- email: string, unique
+- role: student | teacher | admin | hod
+- is_active: boolean
+- is_staff: boolean
+- created_at
+- updated_at
+
+Create payload:
 ```json
 {
-  "date": "2026-10-01",
-  "start_time": "14:00:00",
-  "end_time": "15:00:00",
-  "room": 2
+  "email": "student@example.com",
+  "role": "student",
+  "password": "StrongPassword123"
 }
 ```
 
-### Cancel
+---
 
+## 3.2 Student
+
+Model: `apps.account.models.Student`
+
+Fields:
+- id
+- user
+- student_id
+- batch
+- full_name
+- phone
+- profile_picture
+- enrollment_date
+- created_at
+- updated_at
+
+Example:
+```json
+{
+  "student_id": "STU-2025-001",
+  "batch": 3,
+  "full_name": "Amit Verma",
+  "phone": "9876543210",
+  "enrollment_date": "2025-08-01"
+}
+```
+
+---
+
+## 3.3 Teacher
+
+Model: `apps.account.models.Teacher`
+
+Fields:
+- id
+- user
+- employee_id
+- full_name
+- department
+- designation
+- phone
+- profile_picture
+- created_at
+- updated_at
+
+Example:
+```json
+{
+  "employee_id": "EMP-1001",
+  "full_name": "Bikash Roy",
+  "department": 1,
+  "designation": "Assistant Professor",
+  "phone": "9876543211"
+}
+```
+
+---
+
+## 3.4 Department
+
+Model: `apps.academics.models.Department`
+
+Fields:
+- id
+- name
+- code
+- created_at
+- updated_at
+
+Example:
+```json
+{
+  "name": "Computer Science",
+  "code": "CS"
+}
+```
+
+---
+
+## 3.5 Semester
+
+Model: `apps.academics.models.Semester`
+
+Fields:
+- id
+- department
+- number
+- name
+- start_date
+- end_date
+- created_at
+
+Example:
+```json
+{
+  "department": 1,
+  "number": 3,
+  "name": "Semester 3",
+  "start_date": "2025-07-01",
+  "end_date": "2025-12-15"
+}
+```
+
+---
+
+## 3.6 Batch
+
+Model: `apps.academics.models.Batch`
+
+Fields:
+- id
+- department
+- semester
+- name
+- section
+- academic_year
+- capacity
+- is_active
+- created_at
+- updated_at
+
+Example:
+```json
+{
+  "department": 1,
+  "semester": 3,
+  "name": "BCA",
+  "section": "A",
+  "academic_year": "2025-2026",
+  "capacity": 60,
+  "is_active": true
+}
+```
+
+---
+
+## 3.7 Subject
+
+Model: `apps.academics.models.Subject`
+
+Fields:
+- id
+- department
+- semester
+- teachers
+- name
+- code
+- is_active
+- created_at
+- updated_at
+
+Example:
+```json
+{
+  "department": 1,
+  "semester": 3,
+  "name": "Data Structures",
+  "code": "CS301",
+  "is_active": true,
+  "teachers": [1, 2]
+}
+```
+
+---
+
+## 3.8 Room
+
+Model: `apps.rooms.models.Room`
+
+Fields:
+- id
+- department
+- room_number
+- building
+- floor
+- capacity
+- room_type
+- is_active
+- created_at
+- updated_at
+
+Valid room types:
+- CLASSROOM
+- COMPUTER_LAB
+- LAB
+- SEMINAR_HALL
+
+Example:
+```json
+{
+  "department": 1,
+  "room_number": "301",
+  "building": "Main Block",
+  "floor": 3,
+  "capacity": 60,
+  "room_type": "CLASSROOM",
+  "is_active": true
+}
+```
+
+---
+
+## 3.9 ClassSession
+
+Model: `apps.scheduling.models.ClassSession`
+
+Fields:
+- id
+- subject
+- teacher
+- batch
+- room
+- date
+- start_time
+- end_time
+- time_range
+- status
+- cancellation_reason
+- created_by
+- created_at
+- updated_at
+
+Valid status:
+- SCHEDULED
+- CANCELLED
+- COMPLETED
+
+Example create payload:
+```json
+{
+  "subject": 5,
+  "teacher": 2,
+  "batch": 3,
+  "room": 4,
+  "date": "2026-09-28",
+  "start_time": "10:00:00",
+  "end_time": "11:00:00",
+  "status": "SCHEDULED"
+}
+```
+
+Important rules:
+- Teacher cannot have overlapping class
+- Batch cannot have overlapping class
+- Room cannot be double-booked
+- Subject, batch, and room must belong to same department as teacher
+- `cancellation_reason` is required if status is CANCELLED
+
+---
+
+## 3.10 Activity
+
+Model: `apps.scheduling.models.Activity`
+
+Fields:
+- id
+- type
+- message
+- created_at
+
+Valid types:
+- CLASS_CREATED
+- CLASS_RESCHEDULED
+- CLASS_CANCELLED
+
+---
+
+# 4. API Endpoints
+
+## 4.1 Account / Auth APIs
+
+### 1) Register User
+Route:
+- POST /register/
+
+Description:
+- Create a new user account.
+- Automatically creates matching `Student` or `Teacher` profile based on role.
+
+Required payload:
+```json
+{
+  "email": "student@example.com",
+  "role": "student",
+  "password": "Pass1234!"
+}
+```
+
+Status codes:
+- 201 Created
+- 400 Bad Request
+- 500 Server Error
+
+Response example:
+```json
+{
+  "email": "student@example.com",
+  "role": "student"
+}
+```
+
+---
+
+### 2) Login
+Route:
+- POST /login/
+
+Required payload:
+```json
+{
+  "email": "student@example.com",
+  "password": "Pass1234!"
+}
+```
+
+Status codes:
+- 200 OK
+- 400 Bad Request
+- 401 Unauthorized
+
+Response example:
+```json
+{
+  "access": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "refresh": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+}
+```
+
+---
+
+### 3) Refresh Token
+Route:
+- POST /refresh/
+
+Description:
+- Refresh JWT access token using refresh token.
+
+Required payload:
+```json
+{
+  "refresh": "<refresh_token>"
+}
+```
+
+Status codes:
+- 200 OK
+- 401 Unauthorized
+- 400 Bad Request
+
+Response example:
+```json
+{
+  "access": "new_access_token"
+}
+```
+
+---
+
+### 4) Logout
+Route:
+- POST /logout/
+
+Description:
+- Blacklist refresh token.
+
+Required payload:
+```json
+{
+  "refresh": "<refresh_token>"
+}
+```
+
+Status codes:
+- 205 Reset Content
+- 400 Bad Request
+- 401 Unauthorized
+
+---
+
+### 5) Student Profile
+Route:
+- GET /student_profile/
+- PATCH /student_profile/
+
+Description:
+- Fetch or update logged-in student's profile.
+
+Authentication:
+- Required
+- Role must be `student`
+
+Status codes:
+- 200 OK
+- 400 Bad Request
+- 401 Unauthorized
+- 403 Forbidden
+
+Response example:
+```json
+{
+  "student_id": "STU-2025-001",
+  "batch": 3,
+  "phone": "9876543210",
+  "full_name": "Amit Verma",
+  "enrollment_date": "2025-08-01",
+  "profile_picture": "https://..."
+}
+```
+
+Update payload example:
+```json
+{
+  "phone": "9876543210",
+  "full_name": "Amit Verma"
+}
+```
+
+---
+
+### 6) Teacher Profile
+Route:
+- GET /teacher_profile/
+- PATCH /teacher_profile/
+
+Description:
+- Fetch or update logged-in teacher profile.
+
+Authentication:
+- Required
+- Role must be `teacher`
+
+Status codes:
+- 200 OK
+- 400 Bad Request
+- 401 Unauthorized
+- 403 Forbidden
+
+Example payload:
+```json
+{
+  "employee_id": "EMP-1001",
+  "department": 1,
+  "designation": "Assistant Professor",
+  "phone": "9876543211"
+}
+```
+
+---
+
+### 7) Admin Dashboard
+Route:
+- GET /dashboard/
+
+Description:
+- Returns overview metrics for admin/HOD.
+- Includes counts for students, teachers, subjects, batches, rooms, classes, room utilization, etc.
+
+Authentication:
+- Required
+- Admin only
+
+Status codes:
+- 200 OK
+- 401 Unauthorized
+- 403 Forbidden
+
+Example response:
+```json
+{
+  "overview": {
+    "total_students": 245,
+    "total_teachers": 35,
+    "total_subjects": 72,
+    "total_batches": 12,
+    "total_rooms": 30
+  },
+  "today": {
+    "total_classes": 18,
+    "ongoing_classes": 3,
+    "scheduled_classes": 15,
+    "completed_classes": 0
+  },
+  "schedule": {
+    "classes_this_week": 60,
+    "classes_next_week": 58,
+    "cancelled_this_week": 2,
+    "rescheduled_this_week": 4
+  },
+  "rooms": {
+    "total_rooms": 30,
+    "rooms_in_use": 8,
+    "available_rooms": 22,
+    "utilization_percentage": 27
+  }
+}
+```
+
+---
+
+### 8) Audit Logs
+Route:
+- GET /activitylogs/
+
+Description:
+- Returns recent scheduling activity logs.
+
+Authentication:
+- Required
+- Admin only
+
+Status codes:
+- 200 OK
+- 401 Unauthorized
+- 403 Forbidden
+
+Example:
+```json
+[
+  {
+    "id": 4,
+    "type": "CLASS_CREATED",
+    "message": "New class: CS301 on 2026-09-28 at 10:00:00 in Room 301.",
+    "created_at": "2026-09-24T09:30:00Z"
+  }
+]
+```
+
+---
+
+### 9) Teacher Search
+Route:
+- GET /teacher_search/?q=<query>
+
+Description:
+- Search teachers by name or employee ID.
+
+Authentication:
+- Required
+
+Status codes:
+- 200 OK
+- 400 Bad Request
+- 401 Unauthorized
+
+Example:
+```json
+[
+  {
+    "id": 2,
+    "full_name": "Bikash Roy",
+    "employee_id": "EMP-1001"
+  }
+]
+```
+
+---
+
+## 4.2 Academics APIs
+
+Base prefix:
+- /api/
+
+### 10) Department list/create
+Route:
+- GET /api/departments/
+- POST /api/departments/
+
+Authentication:
+- Admin only
+
+Status codes:
+- 200 OK
+- 201 Created
+- 400 Bad Request
+- 401 Unauthorized
+- 403 Forbidden
+
+Create payload:
+```json
+{
+  "name": "Computer Science",
+  "code": "CS"
+}
+```
+
+---
+
+### 11) Department detail/update/delete
+Routes:
+- GET /api/departments/<id>/
+- PUT /api/departments/<id>/
+- PATCH /api/departments/<id>/
+- DELETE /api/departments/<id>/
+
+---
+
+### 12) Semester list/create
+Route:
+- GET /api/semesters/
+- POST /api/semesters/
+
+Create payload:
+```json
+{
+  "department": 1,
+  "number": 3,
+  "name": "Semester 3",
+  "start_date": "2025-07-01",
+  "end_date": "2025-12-15"
+}
+```
+
+---
+
+### 13) Batch list/create
+Route:
+- GET /api/batches/
+- POST /api/batches/
+
+Create payload:
+```json
+{
+  "department": 1,
+  "semester": 3,
+  "name": "BCA",
+  "section": "A",
+  "academic_year": "2025-2026",
+  "capacity": 60,
+  "is_active": true
+}
+```
+
+---
+
+### 14) Subject list/create
+Route:
+- GET /api/subject/
+- POST /api/subject/
+
+Create payload:
+```json
+{
+  "department": 1,
+  "semester": 3,
+  "teachers": [1, 2],
+  "name": "Data Structures",
+  "code": "CS301",
+  "is_active": true
+}
+```
+
+---
+
+### 15) Search batches
+Route:
+- GET /api/batches/search/?q=<query>
+
+Example:
+```http
+GET /api/batches/search/?q=BCA
+```
+
+Response:
+```json
+[
+  { "id": 3, "name": "BCA" }
+]
+```
+
+---
+
+### 16) Search subjects
+Route:
+- GET /api/subject/search/?q=<query>
+
+Example:
+```http
+GET /api/subject/search/?q=Data
+```
+
+Response:
+```json
+[
+  [5, "Data Structures", "CS301"]
+]
+```
+
+---
+
+## 4.3 Room APIs
+
+Base prefix:
+- /rooms/
+
+### 17) Room list/create
+Routes:
+- GET /rooms/
+- POST /rooms/
+
+Authentication:
+- Admin only
+
+Create payload:
+```json
+{
+  "department": 1,
+  "room_number": "301",
+  "building": "Main Block",
+  "floor": 3,
+  "capacity": 60,
+  "room_type": "CLASSROOM",
+  "is_active": true
+}
+```
+
+Status codes:
+- 200 OK
+- 201 Created
+- 400 Bad Request
+- 401 Unauthorized
+- 403 Forbidden
+
+---
+
+### 18) Search rooms
+Route:
+- GET /rooms/search/?q=<query>
+
+Description:
+- Search room by room number or floor
+
+Example:
+```http
+GET /rooms/search/?q=301
+```
+
+Response:
+```json
+[
+  {
+    "id": 4,
+    "room_number": "301",
+    "floor": 3
+  }
+]
+```
+
+---
+
+### 19) Available rooms
+Route:
+- GET /rooms/avalable/?date=YYYY-MM-DD&start_time=HH:MM:SS&end_time=HH:MM:SS
+
+Description:
+- Returns rooms that are active and not assigned to overlapping scheduled classes.
+
+Required query parameters:
+- date
+- start_time
+- end_time
+
+Status codes:
+- 200 OK
+- 400 Bad Request
+- 401 Unauthorized
+
+Response example:
+```json
+[
+  {
+    "id": 7,
+    "room_number": "305",
+    "capacity": 50
+  }
+]
+```
+
+---
+
+## 4.4 Scheduling APIs
+
+Base prefix:
+- /scheduling/
+
+### 20) Class Session list/create
+Routes:
+- GET /scheduling/
+- POST /scheduling/
+
+Description:
+- List all class sessions visible to the current user.
+- Students only get their own batch classes.
+- Teachers only get their own classes.
+- Admin gets all.
+
+Authentication:
+- Required
+
+Required payload for create:
+```json
+{
+  "subject": 5,
+  "teacher": 2,
+  "batch": 3,
+  "room": 4,
+  "date": "2026-09-28",
+  "start_time": "10:00:00",
+  "end_time": "11:00:00"
+}
+```
+
+Status codes:
+- 200 OK
+- 201 Created
+- 400 Bad Request
+- 401 Unauthorized
+- 403 Forbidden
+
+---
+
+### 21) Class Session detail/update/delete
+Routes:
+- GET /scheduling/<id>/
+- PUT /scheduling/<id>/
+- PATCH /scheduling/<id>/
+- DELETE /scheduling/<id>/
+
+Description:
+- Update or delete class sessions.
+
+For cancellation:
 ```json
 {
   "status": "CANCELLED",
@@ -165,590 +970,501 @@ Existing classes can be modified using the existing class-session API.
 }
 ```
 
-The system validates the updated schedule before applying changes.
+Status codes:
+- 200 OK
+- 204 No Content
+- 400 Bad Request
+- 401 Unauthorized
+- 403 Forbidden
+- 404 Not Found
 
 ---
 
-# 📅 Timetable System
+### 22) Timetable
+Route:
+- GET /scheduling/?format=... OR use list route with filter
+- GET /scheduling/timetable/
 
-The timetable is generated directly from `ClassSession`.
+Description:
+- Returns timetable for current user or all classes depending on role.
 
-No redundant timetable table is required.
+Status codes:
+- 200 OK
+- 401 Unauthorized
 
-### Student Timetable
+Response example:
+```json
+[
+  {
+    "id": 16,
+    "date": "2026-10-10",
+    "start_time": "10:00:00",
+    "end_time": "11:00:00",
+    "subject_name": "Data Structures",
+    "teacher_name": "Bikash Roy",
+    "batch_name": "BCA-3B",
+    "room_name": "Room 301",
+    "status": "SCHEDULED"
+  }
+]
+```
 
-Students receive classes belonging to their batch.
+---
 
-### Teacher Timetable
+### 23) Available rooms for schedule
+Route:
+- GET /scheduling/available-rooms/?date=...&start_time=...&end_time=...
 
-Teachers receive classes assigned to them.
+Description:
+- Returns rooms free during the selected time and date.
 
-### Admin/HOD Timetable
+Required query params:
+- date
+- start_time
+- end_time
 
-Administrators can view the complete campus schedule.
+Status codes:
+- 200 OK
+- 400 Bad Request
+- 401 Unauthorized
 
 Example:
+```http
+GET /scheduling/available-rooms/?date=2026-09-28&start_time=10:00:00&end_time=11:00:00
+```
 
+Response:
+```json
+[
+  {
+    "department": 1,
+    "room_number": "305",
+    "floor": 3,
+    "capacity": 50
+  }
+]
+```
+
+---
+
+### 24) Teacher Schedule
+Route:
+- GET /scheduling/teacher-schedule/?teacher_id=<id>&date=YYYY-MM-DD
+
+Description:
+- Returns teacher's schedule for a given date.
+
+If the caller is a teacher:
+- teacher_id can be omitted, and backend uses the logged-in teacher.
+
+Required query params:
+- date
+- teacher_id (optional for teacher requests)
+
+Status codes:
+- 200 OK
+- 400 Bad Request
+- 401 Unauthorized
+- 403 Forbidden
+
+Example response:
 ```json
 {
-  "id": 16,
-  "date": "2026-10-10",
-  "start_time": "10:00:00",
-  "end_time": "11:00:00",
-  "subject_name": "Data Structures",
-  "teacher_name": "Bikash Roy",
-  "batch_name": "BCA-3B",
-  "status": "SCHEDULED"
+  "teacher_id": 2,
+  "date": "2026-09-28",
+  "classes": [
+    {
+      "id": 9,
+      "date": "2026-09-28",
+      "start_time": "10:00:00",
+      "end_time": "11:00:00",
+      "subject_name": "Data Structures",
+      "batch_name": "BCA-3B",
+      "room_num": "301",
+      "status": "SCHEDULED"
+    }
+  ]
 }
 ```
 
 ---
 
-# 🔎 Filtering
+### 25) Conflict checker
+Route:
+- GET /scheduling/conflict/?date=...&start_time=...&end_time=...&teacher_id=...&batch_id=...&room_id=...
 
-Class schedules can be filtered using Django Filter.
+Description:
+- Checks whether the proposed class conflicts with teacher, batch, or room.
 
-Supported filters include:
+Required query params:
+- date
+- start_time
+- end_time
+- teacher_id
+- batch_id
+- room_id
 
-```text
-date
-date__gt
-date__lt
-date_range
-teacher
-batch
-room
-subject
-status
+Status codes:
+- 200 OK
+- 400 Bad Request
+- 401 Unauthorized
+
+Response:
+```json
+{
+  "has_conflict": true,
+  "conflicts": [
+    {
+      "type": "teacher",
+      "class_id": 12,
+      "subject": "Data Structures",
+      "teacher": "Bikash Roy",
+      "batch": "BCA-3B",
+      "room": "301",
+      "start_time": "10:00:00",
+      "end_time": "11:00:00"
+    }
+  ]
+}
 ```
 
-Example:
+No conflict:
+```json
+{
+  "has_conflict": false,
+  "conflicts": []
+}
+```
 
+---
+
+### 26) Schedule tools
+Route:
+- GET /scheduling/tools/
+
+Description:
+- Returns class schedules based on filters for authenticated user.
+- Used by the AI agent service.
+
+Optional query params:
+- date
+- date_from
+- date_to
+
+Status codes:
+- 200 OK
+- 401 Unauthorized
+
+Example:
 ```http
-GET /scheduling/class-sessions/?status=SCHEDULED
+GET /scheduling/tools/?date=2026-09-28
 ```
 
 ---
 
-# 🔔 Real-Time Notifications
+## 4.5 Agent API
 
-The system uses:
+Base prefix:
+- /agent/
 
-```text
-Django Channels
-        +
-Redis
-        +
-WebSockets
+### 27) Campus Agent Chat
+Route:
+- POST /agent/
+
+Description:
+- AI-powered assistant for campus-related questions.
+- Accepts a natural language message and responds with streaming text events.
+
+Required payload:
+```json
+{
+  "message": "Show me today's schedule"
+}
 ```
 
-Students can maintain a WebSocket connection and receive notifications related to their batch.
+Authorization:
+- Required
+
+Status codes:
+- 200 OK
+- 400 Bad Request
+- 401 Unauthorized
+
+Streaming event format:
+```text
+event: tool_start
+data: {"tool":"search_teachers"}
+
+event: token
+data: {"content":"Here are your classes..."}
+
+event: done
+data: {"status":"completed"}
+```
+
+The agent can answer questions like:
+- Show my schedule
+- Show teacher schedule
+- Check room availability
+- Search teachers, rooms, batches, subjects
+- Check scheduling conflicts
+
+---
+
+# 5. WebSocket Notifications
+
+WebSocket endpoint:
+- ws/notification/?token=<JWT_ACCESS_TOKEN>
+
+Description:
+- Students join a batch group and receive notifications when their batch has a class created, cancelled, or rescheduled.
+
+Authentication:
+- JWT token passed in query string as `token`
+
+Important:
+- If the user is not authenticated, the connection is closed.
+- Students are added to `batch_<batch_id>` group.
 
 Example:
-
 ```text
-/ws/notification/?token=<JWT_ACCESS_TOKEN>
+ws://127.0.0.1:8000/ws/notification/?token=<jwt_token>
 ```
 
-Notifications can be triggered when:
-
-- A class is created
-- A class is cancelled
-- A class is rescheduled
-- The class date changes
-- The class time changes
-- The classroom changes
-
----
-
-# ⚡ Background Tasks
-
-Celery is used for asynchronous processing.
-
-Architecture:
-
-```text
-Django
-   │
-   ├── Celery
-   │      │
-   │      └── Redis
-   │
-   └── PostgreSQL
-```
-
-Current scheduled notification workflow:
-
-```text
-Class Created
-      │
-      ├──────────────► Immediate Task
-      │
-      └── 15 Minutes Before
-                     │
-                     ▼
-              Background Task
-```
-
-Class-specific tasks use Celery ETA scheduling.
-
----
-
-# 📊 Admin Dashboard
-
-The backend provides dashboard metrics such as:
-
-### Overview
-
-```text
-Total Students
-Total Teachers
-Total Subjects
-Total Batches
-Total Rooms
-```
-
-### Today's Classes
-
-```text
-Total Classes
-Ongoing Classes
-Scheduled Classes
-Completed Classes
-```
-
-### Weekly Schedule
-
-```text
-Classes This Week
-Classes Next Week
-Cancelled This Week
-Rescheduled This Week
-```
-
-### Room Usage
-
-```text
-Total Rooms
-Rooms In Use
-Available Rooms
-Utilization Percentage
-```
-
-### Activity
-
-Recent administrative scheduling activity is tracked for dashboard visibility.
-
----
-
-# 🧾 Activity & Audit Tracking
-
-The system records important scheduling activities such as:
-
-```text
-CLASS_CREATED
-CLASS_RESCHEDULED
-CLASS_CANCELLED
-```
-
-This provides administrators with visibility into recent system activity.
-
----
-
-# 🏗️ Architecture
-
-```text
-                    ┌──────────────────────┐
-                    │      Client Apps     │
-                    │ Web / Mobile / APK   │
-                    └──────────┬───────────┘
-                               │
-                               ▼
-                    ┌──────────────────────┐
-                    │     Django REST      │
-                    │        API           │
-                    └──────────┬───────────┘
-                               │
-              ┌────────────────┼────────────────┐
-              │                │                │
-              ▼                ▼                ▼
-        PostgreSQL          Redis          Celery Worker
-              │                │                │
-              │                │                │
-              │                ▼                │
-              │          Django Channels       │
-              │                │                │
-              └────────────────┼────────────────┘
-                               │
-                               ▼
-                         WebSocket
-                        Notifications
+Notification payload:
+```json
+{
+  "type": "notification",
+  "message": "New class: CS301 on 2026-09-28 at 10:00:00 in Room 301."
+}
 ```
 
 ---
 
-# 🛠️ Tech Stack
+# 6. Celery + Background Jobs
 
-## Backend
+Celery is configured in:
+- src/config/celery.py
 
-| Technology | Purpose |
-|---|---|
-| Python | Programming language |
-| Django | Backend framework |
-| Django REST Framework | REST API |
-| PostgreSQL | Primary database |
-| Redis | Cache / message broker |
-| Celery | Background tasks |
-| Django Channels | WebSockets |
-| Simple JWT | Authentication |
-| django-filter | API filtering |
-| drf-spectacular | OpenAPI / Swagger |
+Redis:
+- Broker: redis://127.0.0.1:6379/1
+- Result backend: redis://127.0.0.1:6379/1
 
-## Infrastructure
+Current tasks:
+- `apps.scheduling.notification_clint.beforeclass`
+  - Runs 15 minutes before a class start time
+- `apps.scheduling.notification_clint.wanotification`
+  - Placeholder async task
 
-| Technology | Purpose |
-|---|---|
-| Docker | Containerization |
-| PostgreSQL Docker | Database |
-| Redis Docker | Redis service |
-| Git | Version control |
-| GitHub | Source control |
-
----
-
-# 📁 Project Structure
-
-```text
-campus-management-system/
-│
-├── src/
-│   │
-│   ├── apps/
-│   │   │
-│   │   ├── account/
-│   │   ├── academics/
-│   │   ├── scheduling/
-│   │   ├── rooms/
-│   │   └── ...
-│   │
-│   ├── config/
-│   │   ├── settings.py
-│   │   ├── urls.py
-│   │   ├── asgi.py
-│   │   ├── celery.py
-│   │   └── __init__.py
-│   │
-│   └── manage.py
-│
-├── Dockerfile
-├── pyproject.toml
-├── uv.lock
-└── README.md
-```
-
----
-
-# ⚙️ Local Development
-
-## 1. Clone the repository
-
-```bash
-git clone <your-repository-url>
-
-cd campus-management-system
-```
-
----
-
-## 2. Create the environment
-
-This project uses `uv`.
-
-```bash
-uv sync
-```
-
----
-
-## 3. Start PostgreSQL and Redis
-
-Example Docker services:
-
-```bash
-docker compose up -d
-```
-
-Verify:
-
-```bash
-docker ps
-```
-
----
-
-## 4. Run migrations
-
-```bash
-uv run python src/manage.py migrate
-```
-
----
-
-## 5. Create a superuser
-
-```bash
-uv run python src/manage.py createsuperuser
-```
-
----
-
-## 6. Start Django
-
-```bash
-uv run python src/manage.py runserver
-```
-
----
-
-# ⚡ Start Celery
-
-Start the worker:
-
+Run worker:
 ```bash
 uv run celery -A config worker --loglevel=info --pool=solo
 ```
 
-> `--pool=solo` is useful for local development on macOS.
+Start beat if required:
+```bash
+uv run celery -A config beat --loglevel=info
+```
 
 ---
 
-# 🔴 Redis
+# 7. Frontend Developer Notes
 
-Redis is used for:
+## 7.1 Login Flow
+1. Call `POST /login/`
+2. Save returned `access` and `refresh`
+3. Use access token in every protected request:
+   ```http
+   Authorization: Bearer <access>
+   ```
 
-```text
-Database 0 → Django Channels
-Database 1 → Celery
-```
+## 7.2 Role-aware UI
+- If role == student:
+  - Show student profile
+  - Show own timetable
+  - Hide class creation forms
+- If role == teacher:
+  - Show teacher profile
+  - Show teacher schedule
+  - Allow create/update/cancel class
+- If role == admin/hod:
+  - Show dashboard
+  - Show rooms management
+  - Show academic management
+  - Show activity logs
 
-Example:
-
-```python
-CHANNEL_LAYERS = {
-    "default": {
-        "BACKEND": "channels_redis.core.RedisChannelLayer",
-        "CONFIG": {
-            "hosts": [("127.0.0.1", 6379)],
-        },
-    },
+## 7.3 Scheduling Form
+Required values:
+```json
+{
+  "subject": 5,
+  "teacher": 2,
+  "batch": 3,
+  "room": 4,
+  "date": "2026-09-28",
+  "start_time": "10:00:00",
+  "end_time": "11:00:00"
 }
 ```
 
-Celery:
+Before sending:
+- Validate teacher not busy
+- Validate batch not busy
+- Validate room free
+- Ensure subject/batch/room belong to same department
 
-```python
-CELERY_BROKER_URL = "redis://127.0.0.1:6379/1"
-CELERY_RESULT_BACKEND = "redis://127.0.0.1:6379/1"
+## 7.4 Best practice for conflict validation
+Call:
+```http
+GET /scheduling/conflict/?date=...&start_time=...&end_time=...&teacher_id=...&batch_id=...&room_id=...
+```
+
+If `has_conflict == true`, show returned list to user.
+
+## 7.5 Room availability
+Call:
+```http
+GET /rooms/avalable/?date=2026-09-28&start_time=10:00:00&end_time=11:00:00
+```
+
+## 7.6 Fetching own timetable
+For student:
+```http
+GET /scheduling/?status=SCHEDULED
+```
+
+For teacher:
+```http
+GET /scheduling/teacher-schedule/?date=2026-09-28
+```
+
+## 7.7 Search helpers
+Use:
+- `/teacher_search/?q=...`
+- `/api/batches/search/?q=...`
+- `/api/subject/search/?q=...`
+- `/rooms/search/?q=...`
+
+---
+
+# 8. Common HTTP Status Codes
+
+- 200 OK: successful GET/PATCH/PUT
+- 201 Created: successful POST
+- 204 No Content: successful DELETE
+- 400 Bad Request: invalid body / validation failed / missing params
+- 401 Unauthorized: token missing or invalid
+- 403 Forbidden: user does not have permission
+- 404 Not Found: resource not found
+- 405 Method Not Allowed: unsupported method
+- 500 Internal Server Error: server error
+
+---
+
+# 9. Backend Notes and Important Implementation Details
+
+## 9.1 Conflict enforcement
+Conflicts are enforced at database level using PostgreSQL exclusion constraints on:
+- teacher
+- batch
+- room
+- time_range
+
+This prevents overlapping scheduled classes even when app-level checks are bypassed.
+
+## 9.2 Automatic notifications
+When a `ClassSession` is saved:
+- `signal.py` listens for create/update
+- Creates `Activity` entries
+- Sends WebSocket notification to the batch group
+
+## 9.3 Student notifications
+The WebSocket consumer adds the student to:
+- `batch_<batch_id>`
+
+So students receive class updates of their own batch.
+
+## 9.4 Authentication
+This project uses JWT via `djangorestframework-simplejwt`.
+
+---
+
+# 10. Setup Guide
+
+## Install dependencies
+```bash
+cd /Users/anshusaha/Documents/Compus\ management\ system
+uv sync
+```
+
+## Run migrations
+```bash
+uv run python src/manage.py migrate
+```
+
+## Run server
+```bash
+uv run python src/manage.py runserver
+```
+
+## Optional: create superuser
+```bash
+uv run python src/manage.py createsuperuser
+```
+
+## Start Celery worker
+```bash
+uv run celery -A config worker --loglevel=info --pool=solo
 ```
 
 ---
 
-# 📖 API Documentation
+# 11. API Docs
+
+Swagger:
+- /docs/
 
 OpenAPI schema:
-
-```text
-/schema/
-```
-
-Swagger UI:
-
-```text
-/docs/
-```
-
-Redoc:
-
-```text
-/redoc/
-```
-
-The API documentation is generated using `drf-spectacular`.
+- /schema/
 
 ---
 
-# 🔐 API Authorization
+# 12. Summary
 
-Protected endpoints require a JWT access token.
+This system is built for:
+- scheduling academic classes
+- preventing conflicts automatically
+- managing academic master data
+- supporting role-based access
+- real-time updates for students
+- admin insights and audit tracking
 
-Example:
-
-```http
-Authorization: Bearer <access_token>
-```
-
----
-
-# 👥 Permission Model
-
-| Operation | Student | Teacher | Admin/HOD |
-|---|---:|---:|---:|
-| View classes | ✅ | ✅ | ✅ |
-| View timetable | ✅ | ✅ | ✅ |
-| Create class | ❌ | ✅ | ✅ |
-| Update class | ❌ | ✅ | ✅ |
-| Cancel class | ❌ | ✅ | ✅ |
-| Delete class | ❌ | ✅ | ✅ |
-| Manage users | ❌ | ❌ | ✅ |
-| View campus schedule | ❌ | Limited | ✅ |
-
----
-
-# 🔮 Future Improvements
-
-Planned improvements include:
-
-- WhatsApp notification integration
-- Push notifications
-- Automated timetable generation
-- Recurring classes
-- Room capacity validation
-- Lab requirement validation
-- Class attendance
-- Advanced analytics
-- Better audit history
-- Notification preferences
-- Automatic timetable optimization
-- Mobile application
-- Production monitoring
-- Rate limiting
-- Advanced caching
-- Horizontal scaling
+For frontend and developer implementation, the most important endpoints are:
+- /login/
+- /register/
+- /student_profile/
+- /teacher_profile/
+- /dashboard/
+- /api/batches/search/
+- /api/subject/search/
+- /rooms/search/
+- /rooms/avalable/
+- /scheduling/
+- /scheduling/available-rooms/
+- /scheduling/teacher-schedule/
+- /scheduling/conflict/
+- /agent/
 
 ---
 
-# 🎯 Design Goals
+If you are building the frontend, start with these flows:
+1. Login
+2. Get user profile
+3. Fetch timetable
+4. Search teachers / batches / rooms / subjects
+5. Create class
+6. Validate conflict
+7. Show dashboard data
+8. Subscribe to WebSocket notifications
 
-The project focuses on:
-
-```text
-Consistency
-Security
-Scalability
-Real-time communication
-Background processing
-Database integrity
-Clean API design
-Role-based access
-```
-
-A major design principle is:
-
-> **Important scheduling rules should be enforced at the database level whenever possible.**
-
----
-
-# 🧪 Testing
-
-Before deploying, test:
-
-```text
-Authentication
-Permissions
-Class creation
-Class update
-Class cancellation
-Class rescheduling
-Teacher conflicts
-Batch conflicts
-Room conflicts
-Concurrent scheduling
-Timetable filtering
-WebSocket authentication
-WebSocket notifications
-Celery tasks
-Dashboard calculations
-```
-
----
-
-# 🚀 Production Architecture
-
-A production deployment can be structured as:
-
-```text
-                    Load Balancer
-                          │
-             ┌────────────┴────────────┐
-             │                         │
-        Django API #1             Django API #2
-             │                         │
-             └────────────┬────────────┘
-                          │
-                    PostgreSQL
-                          │
-                        Redis
-                       /     \
-                      /       \
-               Celery Worker   Channels
-                      │
-                      ▼
-                Background Jobs
-```
-
-This allows the API layer to scale independently from background workers.
-
----
-
-# 📌 Project Status
-
-## Core Backend
-
-- [x] Custom authentication
-- [x] Role-based permissions
-- [x] Student management
-- [x] Teacher management
-- [x] Academic management
-- [x] Room management
-- [x] Class scheduling
-- [x] Conflict detection
-- [x] PostgreSQL constraints
-- [x] Class cancellation
-- [x] Class rescheduling
-- [x] Timetable API
-- [x] Filtering
-- [x] Redis
-- [x] WebSockets
-- [x] Real-time notifications
-- [x] Celery
-- [x] Scheduled background tasks
-- [x] Dashboard
-- [x] Activity tracking
-- [x] API documentation
-
-## Upcoming
-
-- [ ] WhatsApp notification integration
-- [ ] Push notifications
-- [ ] Automated timetable generation
-- [ ] Attendance
-- [ ] Advanced analytics
-- [ ] Production deployment optimization
-
----
-
-# 👨‍💻 Author
-
-**Anshu Saha**
-
-Backend Developer
-
-`Python` • `Django` • `DRF` • `PostgreSQL` • `Redis` • `Celery` • `WebSockets`
-
----
-
-# ⭐ If You Find This Project Interesting
-
-Give the repository a ⭐ and feel free to explore the architecture, APIs, and scheduling implementation.
-
----
+This is the complete API contract required for frontend integration and backend development.

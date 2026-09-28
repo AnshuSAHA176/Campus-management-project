@@ -67,9 +67,9 @@ def Tools(access_token):
         schedule_date: str,
         start_time: str,
         end_time: str,
-        teacher_id: Optional[str] = None,
-        batch_id: Optional[str] = None,
-        room_id: Optional[str] = None,
+        teacher_id: Optional[int] = None,
+        batch_id: Optional[int] = None,
+        room_id: Optional[int] = None,
     ):
         """
         Check whether a proposed class schedule conflicts with
@@ -227,7 +227,26 @@ def Tools(access_token):
             schedule_date=schedule_date, start_time=start_time, end_time=end_time
         )
 
-        return json.dumps(result,default=str)
+        return json.dumps(result, default=str)
+
+    @tool
+    def search_subjects(query: str):
+        """
+        Search for subjects by subject name or code.
+
+        Use this when the user mentions a subject and its database ID
+        is needed for another operation.
+
+        Example:
+        search_subjects("Data Structures")
+        """
+
+        result = services.search_subjects(query)
+
+        if not result:
+            return "No subject found matching the search."
+
+        return json.dumps(result, default=str)
 
     return (
         get_schedule,
@@ -237,5 +256,6 @@ def Tools(access_token):
         search_batches,
         search_rooms,
         teacher_schedule,
-        find_available_rooms
+        find_available_rooms,
+        search_subjects,
     )
