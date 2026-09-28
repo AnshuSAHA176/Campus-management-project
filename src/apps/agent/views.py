@@ -1,6 +1,6 @@
 from rest_framework.views import APIView
 
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, IsAdminUser
 from .agent import get_agent
 
 from rest_framework.response import Response
@@ -9,7 +9,10 @@ from langchain.messages import SystemMessage, HumanMessage
 
 from django.http import StreamingHttpResponse
 import json
+from rest_framework import generics
 
+from .models import Document
+from .serializer import DocumentSrializer
 
 system_message = """
 TEACHER SCHEDULE RULES:
@@ -44,6 +47,7 @@ Examples:
   → teacher_schedule(teacher_id=<resolved_id>, schedule_date=<tomorrow>).
 """
 
+
 class AgentView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -66,11 +70,7 @@ class AgentView(APIView):
                 status=400,
             )
 
-        config = {
-            "configurable": {
-                "thread_id": str(request.user.id)
-            }
-        }
+        config = {"configurable": {"thread_id": str(request.user.id)}}
 
         async def event_stream():
 
@@ -120,9 +120,7 @@ class AgentView(APIView):
 
             yield self._event(
                 "done",
-                {
-                    "status": "completed"
-                },
+                {"status": "completed"},
             )
 
         response = StreamingHttpResponse(
@@ -137,10 +135,7 @@ class AgentView(APIView):
 
     @staticmethod
     def _event(event_type, data):
-        return (
-            f"event: {event_type}\n"
-            f"data: {json.dumps(data)}\n\n"
-        )
+        return f"event: {event_type}\n" f"data: {json.dumps(data)}\n\n"
 
     @staticmethod
     def _get_token(request):
@@ -150,3 +145,10 @@ class AgentView(APIView):
         )
 
         return auth_header.replace("Bearer ", "")
+
+
+class DocumentView(generics.CreateAPIView):
+    permission_classes = [IsAdminUser]
+
+    queryset = Document.objects.all()
+    serializer_class = DocumentSrializer

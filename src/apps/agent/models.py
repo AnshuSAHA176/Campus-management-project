@@ -3,7 +3,7 @@ from pgvector.django import VectorField
 from cloudinary.models import CloudinaryField
 import uuid
 
-class Document(models.Model):
+class  Document(models.Model):
     id = models.UUIDField(
         primary_key=True,
         default=uuid.uuid4,
