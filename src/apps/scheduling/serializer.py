@@ -202,11 +202,14 @@ class ClassSeasionSerializer(serializers.ModelSerializer):
         validated_data["created_by"] = request.user
 
         instance = ClassSession.objects.create(**validated_data)
-        transaction.on_commit(lambda: wanotification.delay())
+        
 
+        transaction.on_commit(lambda: wanotification.delay(instance.id))
+        
         notification_time = timezone.make_aware(
             datetime.datetime.combine(date=instance.date, time=instance.start_time)
         ) - datetime.timedelta(minutes=15)
+
 
         transaction.on_commit(
             lambda: beforeclass.apply_async(args=[instance.id], eta=notification_time)

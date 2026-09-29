@@ -24,6 +24,12 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+BREVO_API_KEY = os.environ.get("BREVO_API_KEY")
+BREVO_SENDER_EMAIL = os.environ.get("BREVO_SENDER_EMAIL")
+BREVO_SENDER_NAME = os.environ.get(
+    "BREVO_SENDER_NAME",
+    "Campus Management",
+)
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
@@ -183,7 +189,7 @@ SPECTACULAR_SETTINGS = {
 }
 
 CSRF_TRUSTED_ORIGINS = [
-    "https://frederick-appointments-competitors-directories.trycloudflare.com",
+    "https://everyday-jonathan-usc-travels.trycloudflare.com",
 ]
 
 cloudinary.config(
@@ -215,5 +221,9 @@ CORS_ALLOWED_ORIGINS = [
     "http://127.0.0.1:3000",
     "http://127.0.0.1:5500",
     "https://yourfrontenddomain.com",
-    "https://dist-lawsuit-lions-tariff.trycloudflare.com",
+    "https://ends-shoulder-initiated-thank.trycloudflare.com",
+    "http://localhost:517",
+    "https://course-promote-bundle-dvds.trycloudflare.com",
+    "https://index-drove-warrior-taken.trycloudflare.com",
 ]
+

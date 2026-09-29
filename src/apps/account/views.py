@@ -21,7 +21,8 @@ from apps.academics.models import Subject, Batch
 from apps.scheduling.models import ClassSession, Activity
 from django.utils import timezone
 import datetime
-
+from django.db import IntegrityError
+from rest_framework import status
 
 class IsStudent(BasePermission):
     def has_permission(self, request, view):
@@ -38,6 +39,18 @@ class RegisterView(generics.CreateAPIView):
     permission_classes = [AllowAny]
     queryset = User.objects.all()
     serializer_class = RegisterSerializer
+    def post(self, request, *args, **kwargs):
+        try:
+
+            user = super().post(request, *args, **kwargs)
+        except IntegrityError:
+            return Response(
+                {
+                    "error": "A user with this email already exists."
+                },
+                status=status.HTTP_409_CONFLICT,
+            )
+        return user
 
 
 class LoginView(APIView):
@@ -188,7 +201,7 @@ class AdminDashBoard(APIView):
                     "rooms_in_use": rooms["rooms_in_use"],
                     "available_rooms": rooms["total_rooms"] - rooms["rooms_in_use"],
                     "utilization_percentage": round(
-                        (rooms["rooms_in_use"] / rooms["total_rooms"]) * 100
+                        (rooms["rooms_in_use"] / rooms["total_rooms"]) * 100 if rooms['total_rooms']>0. else 0
                     ),
                 },
                 "batches": {
