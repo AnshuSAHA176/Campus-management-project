@@ -4,6 +4,7 @@ from django.contrib.auth import authenticate
 from apps.scheduling.models import  Activity
 
 class RegisterSerializer(serializers.ModelSerializer):
+    email = serializers.EmailField()
     class Meta:
         model = User
         fields = [
@@ -24,6 +25,7 @@ class RegisterSerializer(serializers.ModelSerializer):
             }
         }
 
+    
     def create(self, validated_data):
         user = User.objects.create_user(**validated_data)
         return user

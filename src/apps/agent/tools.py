@@ -2,6 +2,8 @@ from langchain.tools import tool
 from .services import Services
 from typing import Optional
 import json
+from .RAG.knowlagebase import knowledge_base
+
 
 BASE_URL = "http://127.0.0.1:8000/"
 
@@ -247,6 +249,29 @@ def Tools(access_token):
             return "No subject found matching the search."
 
         return json.dumps(result, default=str)
+    @tool
+    def knowledge_base_tool(user_query:str):
+        """
+    Search the campus knowledge base for relevant institutional information.
+
+    Use this tool when the user asks about university rules, academic
+    regulations, department information, procedures, policies, notices,
+    courses, attendance, examinations, or other information that may
+    exist in the uploaded campus documents.
+
+    Args:
+        user_query: The user's question or search query.
+
+    Returns:
+        A JSON string containing the most relevant document chunks,
+        including document ID, page range, and chunk text.
+    """
+
+        result = knowledge_base(user_query=user_query)
+
+        return json.dumps(result, default=str)
+
+
 
     return (
         get_schedule,
@@ -258,4 +283,5 @@ def Tools(access_token):
         teacher_schedule,
         find_available_rooms,
         search_subjects,
+        knowledge_base_tool,
     )

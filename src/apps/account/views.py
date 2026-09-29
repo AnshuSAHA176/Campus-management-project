@@ -50,7 +50,7 @@ class LoginView(APIView):
         refresh = RefreshToken.for_user(user=user)
         access = refresh.access_token
 
-        return Response({"access": str(access), "refresh": str(refresh)})
+        return Response({"access": str(access), "refresh": str(refresh),"role":user.role})
 
 
 class StudentProfile(generics.RetrieveUpdateAPIView):

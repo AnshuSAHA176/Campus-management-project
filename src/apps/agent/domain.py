@@ -14,118 +14,116 @@ class Domain(BaseModel):
 
 def domain_classifier(message: str):
 
-    prompt = f"""
-You are a strict domain classifier for a Campus Management System.
+    prompt = """
+You are the domain classifier for CampusAI.
 
-Classify the user's message into exactly one of:
+Classify the user's request into exactly one of:
 
-- "campus"
-- "unknown"
+- campus
+- unknown
 
 Return ONLY valid JSON:
-{{"domain": "campus"}}
+
+{"domain": "campus"}
+
 or
-{{"domain": "unknown"}}
 
-========================
-CAMPUS DOMAIN
-========================
+{"domain": "unknown"}
 
-Classify as "campus" if the user asks about ANYTHING related to
-campus management, including:
+CLASSIFY AS "campus" if the question is about ANY of the following:
 
-- today's schedule
-- today's schedules
-- today's classes
-- today classes
-- today's timetable
-- timetable
-- class schedule
-- class schedules
-- tomorrow's classes
-- classes on a specific date
-- weekly schedule
-- teacher schedule
-- student schedule
-- batch schedule
-- room schedule
-- available rooms
-- room availability
-- teachers
+- university
+- campus
+- department
 - students
-- subjects
+- teachers
 - batches
+- subjects
 - classrooms
-- departments
-- class creation
-- class cancellation
-- class rescheduling
-- scheduling conflicts
-- teacher conflicts
-- room conflicts
-- batch conflicts
+- rooms
+- schedules
+- timetables
+- classes
+- exams
+- attendance
+- admission
+- academic programs
+- curriculum
+- courses
+- research
+- regulations
+- rules
+- policies
+- procedures
+- notices
+- institutional information
+- uploaded documents
+- PDFs
+- the knowledge base
+- information contained in a document
+
+IMPORTANT:
+If the user says:
+- "the document"
+- "this document"
+- "the PDF"
+- "this PDF"
+- "the uploaded document"
+- "according to the document"
+- "what does the document say"
+- "according to the PDF"
+
+classify the request as "campus".
+
+Also classify questions containing academic terms such as:
+- curriculum
+- program objectives
+- course structure
+- academic focus
+- research focus
+- eligibility
+- admission requirements
+
+as "campus" when they could refer to institutional information.
 
 Examples:
 
-"Show me all of today's schedules"
-→ {{"domain": "campus"}}
+User: What does the document say about the applied curriculum?
+{"domain": "campus"}
 
-"show me all of today schedules"
-→ {{"domain": "campus"}}
+User: What does the document say about the curriculum?
+{"domain": "campus"}
 
-"What classes do I have today?"
-→ {{"domain": "campus"}}
+User: What does the PDF say about admission?
+{"domain": "campus"}
 
-"Show my timetable"
-→ {{"domain": "campus"}}
+User: What are the program objectives?
+{"domain": "campus"}
 
-"What classes are tomorrow?"
-→ {{"domain": "campus"}}
+User: What is the academic and research focus?
+{"domain": "campus"}
 
-"Is room 204 available at 10 AM?"
-→ {{"domain": "campus"}}
+User: What classes do I have tomorrow?
+{"domain": "campus"}
 
-"Show me Bikash's schedule"
-→ {{"domain": "campus"}}
+User: What rooms are available tomorrow?
+{"domain": "campus"}
 
-"Can I schedule a class tomorrow?"
-→ {{"domain": "campus"}}
+User: What is the weather today?
+{"domain": "unknown"}
 
-========================
-UNKNOWN DOMAIN
-========================
+User: Write a Python program.
+{"domain": "unknown"}
 
-Classify as "unknown" if the request is unrelated to campus management.
+User: Tell me a joke.
+{"domain": "unknown"}
 
-Examples:
+User: Explain quantum physics.
+{"domain": "unknown"}
 
-"What is the weather today?"
-→ {{"domain": "unknown"}}
-
-"Explain Python decorators"
-→ {{"domain": "unknown"}}
-
-"Write a poem"
-→ {{"domain": "unknown"}}
-
-"Who is Elon Musk?"
-→ {{"domain": "unknown"}}
-
-========================
-IMPORTANT
-========================
-
-- Focus on the user's INTENT, not perfect grammar.
-- Small spelling or grammar mistakes must NOT change the classification.
-- "today schedules", "today's schedules", and "today schedule" all mean
-  the same campus scheduling intent.
-- Never return anything except the JSON object.
-- Never add explanations.
-
-USER MESSAGE:
+User message:
 {message}
 """
-
     model = get_model()
     response = model.invoke(prompt)
 

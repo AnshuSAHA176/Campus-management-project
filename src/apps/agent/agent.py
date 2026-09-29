@@ -8,7 +8,45 @@ from .domain import domain_classifier
 from langchain.messages import HumanMessage, AIMessage
 from langgraph.checkpoint.memory import InMemorySaver
 
+from langchain_core.messages import HumanMessage
 
+
+CAMPUS_KEYWORDS = {
+    "campus",
+    "university",
+    "college",
+    "department",
+    "student",
+    "students",
+    "teacher",
+    "teachers",
+    "professor",
+    "batch",
+    "subject",
+    "classroom",
+    "room",
+    "schedule",
+    "timetable",
+    "class",
+    "attendance",
+    "exam",
+    "examination",
+    "admission",
+    "curriculum",
+    "course",
+    "courses",
+    "research",
+    "regulation",
+    "regulations",
+    "policy",
+    "policies",
+    "notice",
+    "document",
+    "documents",
+    "pdf",
+    "knowledge",
+    "academic",
+}
 cheakpointer = InMemorySaver()
 def get_agent(access_token):
     model = get_model()
@@ -30,6 +68,7 @@ def get_agent(access_token):
         teacher_schedule,
         find_available_rooms,
         search_subjects,
+        knowledge_base_tool,
     ) = Tools(access_token)
 
     tools = [
@@ -42,19 +81,35 @@ def get_agent(access_token):
         teacher_schedule,
         find_available_rooms,
         search_subjects,
+        knowledge_base_tool,
     ]
     model_with_tool = model.bind_tools(tools)
 
     def domain_classifier_node(state: State):
 
         human_messages = [
-            message for message in state.messages if message.type == "human"
+            message
+            for message in state.messages
+            if isinstance(message, HumanMessage)
         ]
 
         recent_human_messages = human_messages[-3:]
 
-        conversation = "\n".join(message.content for message in recent_human_messages)
+        conversation = "\n".join(
+            message.content
+            for message in recent_human_messages
+        )
 
+        text = conversation.lower()
+
+        # Deterministic campus routing
+        if any(
+            keyword in text
+            for keyword in CAMPUS_KEYWORDS
+        ):
+            return {"domain": "campus"}
+
+        # Let the LLM classify ambiguous requests
         domain = domain_classifier(conversation)
 
         return {"domain": domain}

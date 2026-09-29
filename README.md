@@ -28,6 +28,371 @@ Important note:
 
 ---
 
+# API Endpoint Reference
+
+This project exposes a Django REST Framework backend for campus management. All routes are grouped by app and mounted from the root URL configuration in `src/config/urls.py`.
+
+Base URLs:
+- Local backend: `http://127.0.0.1:8000`
+- Swagger docs: `http://127.0.0.1:8000/docs/`
+- OpenAPI schema: `http://127.0.0.1:8000/schema/`
+- Admin site: `http://127.0.0.1:8000/admin/`
+
+Authentication:
+- Most endpoints require a logged-in user.
+- Use JWT access token in the header:
+  `Authorization: Bearer <access_token>`
+- `login` returns both `access` and `refresh` tokens.
+
+Important access rules:
+- `POST /register/` and `POST /login/` are public.
+- Student profile endpoints require `request.user.role == "student"`.
+- Teacher profile endpoints require `request.user.role == "teacher"`.
+- Admin routes require `is_staff == True`.
+- Scheduling create/update operations are allowed for admin or teacher users.
+
+---
+
+## 1) Authentication and account endpoints
+
+These are mounted directly at the project root.
+
+### Public endpoints
+
+1. `POST /register/`
+   - Create a new user account.
+   - Example body:
+     ```json
+     {
+       "email": "student@example.com",
+       "password": "StrongPassword123",
+       "role": "student"
+     }
+     ```
+   - Response: created user information and token handling from the serializer.
+
+2. `POST /login/`
+   - Authenticate a user and return JWT tokens.
+   - Example body:
+     ```json
+     {
+       "email": "student@example.com",
+       "password": "StrongPassword123"
+     }
+     ```
+   - Response:
+     ```json
+     {
+       "access": "<jwt_access_token>",
+       "refresh": "<jwt_refresh_token>",
+       "role": "student"
+     }
+     ```
+
+3. `POST /refresh/`
+   - Refresh an expired access token using a valid refresh token.
+   - Uses Django REST Framework Simple JWT `TokenRefreshView`.
+
+4. `POST /logout/`
+   - Blacklist a refresh token and log the user out.
+   - Uses `TokenBlacklistView`.
+
+### Authenticated user endpoints
+
+5. `GET /student_profile/`
+   - Returns the authenticated student’s profile.
+   - Requires student role.
+
+6. `PUT /student_profile/` or `PATCH /student_profile/`
+   - Update the student profile.
+
+7. `GET /teacher_profile/`
+   - Returns the authenticated teacher profile.
+   - Requires teacher role.
+
+8. `PUT /teacher_profile/` or `PATCH /teacher_profile/`
+   - Updates the teacher profile.
+
+9. `GET /dashboard/`
+   - Returns the admin dashboard summary.
+   - Requires admin access.
+   - Includes overview counts, today’s schedule metrics, weekly schedule stats, room status, and recent activity.
+
+10. `GET /activitylogs/`
+    - Lists recent activity records.
+    - Requires admin access.
+
+11. `GET /teacher_search/?q=<search_text>`
+    - Search teachers by name or employee ID.
+    - Example: `/teacher_search/?q=rahul`
+    - Returns a list of matching teacher objects with `id`, `full_name`, and `employee_id`.
+
+---
+
+## 2) Academic endpoints
+
+All academic endpoints are under the `/api/` prefix.
+
+### 2.1 Department endpoints
+
+Base route: `/api/departments/`
+
+- `GET /api/departments/` — list all departments
+- `POST /api/departments/` — create a department
+- `GET /api/departments/<id>/` — retrieve one department
+- `PUT /api/departments/<id>/` — update department
+- `PATCH /api/departments/<id>/` — partial update
+- `DELETE /api/departments/<id>/` — delete department
+
+### 2.2 Semester endpoints
+
+Base route: `/api/semesters/`
+
+- `GET /api/semesters/` — list semesters
+- `POST /api/semesters/` — create semester
+- `GET /api/semesters/<id>/` — retrieve semester
+- `PUT /api/semesters/<id>/` — update semester
+- `PATCH /api/semesters/<id>/` — partial update
+- `DELETE /api/semesters/<id>/` — delete semester
+
+### 2.3 Batch endpoints
+
+Base route: `/api/batches/`
+
+- `GET /api/batches/` — list all batches
+- `POST /api/batches/` — create a batch
+- `GET /api/batches/<id>/` — retrieve a batch
+- `PUT /api/batches/<id>/` — update a batch
+- `PATCH /api/batches/<id>/` — partial update
+- `DELETE /api/batches/<id>/` — delete a batch
+
+### 2.4 Subject endpoints
+
+Base route: `/api/subject/`
+
+- `GET /api/subject/` — list subjects
+- `POST /api/subject/` — create subject
+- `GET /api/subject/<id>/` — retrieve subject
+- `PUT /api/subject/<id>/` — update subject
+- `PATCH /api/subject/<id>/`` — partial update
+- `DELETE /api/subject/<id>/` — delete subject
+
+### 2.5 Search endpoints
+
+- `GET /api/batches/search/?q=<text>`
+  - Search batches by name.
+  - Example: `/api/batches/search/?q=3A`
+
+- `GET /api/subject/search/?q=<text>`
+  - Search subjects by name or subject code.
+  - Example: `/api/subject/search/?q=dbms`
+
+Notes:
+- Academic management routes are admin-only in this project (`IsAdminUser`).
+- These endpoints use `ModelViewSet`, so standard CRUD operations are available automatically.
+
+---
+
+## 3) Room endpoints
+
+All room routes are mounted under `/rooms/`.
+
+### Core room CRUD
+
+Base route: `/rooms/`
+
+- `GET /rooms/` — list rooms
+- `POST /rooms/` — create a room
+- `GET /rooms/<id>/` — fetch one room
+- `PUT /rooms/<id>/` — update room
+- `PATCH /rooms/<id>/` — partial update
+- `DELETE /rooms/<id>/` — delete room
+
+### Room search and availability
+
+- `GET /rooms/search/?q=<text>`
+  - Search room by room number or floor.
+  - Example: `/rooms/search/?q=204`
+
+- `GET /rooms/avalable/?date=YYYY-MM-DD&start_time=HH:MM:SS&end_time=HH:MM:SS`
+  - Check room availability for a time range.
+  - Example:
+    ```http
+    GET /rooms/avalable/?date=2026-09-29&start_time=09:00:00&end_time=10:00:00
+    ```
+  - Returns available rooms that do not conflict with the selected time slot.
+
+Note:
+- Room management is admin-only, but searching and availability checks require authentication.
+
+---
+
+## 4) Scheduling endpoints
+
+All scheduling routes are under `/scheduling/`.
+
+### Core class session CRUD
+
+Base route: `/scheduling/`
+
+- `GET /scheduling/` — list class sessions for the current user
+  - Students see classes in their own batch.
+  - Teachers see classes they teach.
+  - Admins see all sessions.
+- `POST /scheduling/` — create a class session
+- `GET /scheduling/<id>/` — retrieve one class session
+- `PUT /scheduling/<id>/` — update a session
+- `PATCH /scheduling/<id>/` — partial update
+- `DELETE /scheduling/<id>/` — delete a class session
+
+### Scheduling custom actions
+
+- `GET /scheduling/timetable/`
+  - Returns the timetable for the current user or all classes depending on role.
+  - Supports filtering via query parameters.
+
+- `GET /scheduling/available-rooms/?date=YYYY-MM-DD&start_time=HH:MM:SS&end_time=HH:MM:SS`
+  - Returns rooms that are free during a given time window.
+
+- `GET /scheduling/teacher-schedule/?teacher_id=<id>&date=YYYY-MM-DD`
+  - Returns a teacher’s schedule for a specific date.
+  - If the logged-in user is a teacher, `teacher_id` can be omitted.
+
+- `GET /scheduling/tools/`
+  - Returns class session data for the AI agent and schedule tools.
+  - Authenticated users only.
+
+- `GET /scheduling/conflict/?date=YYYY-MM-DD&start_time=HH:MM:SS&end_time=HH:MM:SS&teacher_id=<id>&batch_id=<id>&room_id=<id>`
+  - Checks whether a requested class schedule would conflict with existing schedule data.
+  - Response is used as a pre-check before scheduling.
+
+Schedule creation behavior:
+- Admin and teacher users can create schedules.
+- The system checks conflicts for teacher, batch, and room overlap.
+- If a conflict exists, a `400 Bad Request` is returned with a descriptive error, for example:
+  - teacher already has a class during this time
+  - batch already has a class during this time
+  - room is already booked during this time
+
+---
+
+## 5) AI agent endpoints
+
+These are mounted under `/agent/`.
+
+### 5.1 Campus AI chat
+
+- `POST /agent/`
+  - Sends a campus-related question to the AI assistant.
+  - Request body:
+    ```json
+    {
+      "message": "What classes does the BCA batch have tomorrow?"
+    }
+    ```
+  - This endpoint streams a Server-Sent Events (SSE) response.
+  - It uses the campus agent with access to schedule tools and knowledge-base tools.
+
+### 5.2 Knowledge upload
+
+- `POST /agent/knowledge/`
+  - Uploads a document into the knowledge base.
+  - Requires admin access.
+  - Uses the `DocumentView` and `DocumentSerializer`.
+
+Note:
+- The AI assistant is designed to answer campus questions using both live schedule data and uploaded knowledge documents.
+
+---
+
+## 6) Documentation and schema endpoints
+
+- `GET /schema/` — OpenAPI schema file
+- `GET /docs/` — Swagger UI documentation page
+- `GET /admin/` — Django admin UI
+
+These are defined in `src/config/urls.py`.
+
+---
+
+## 7) WebSocket endpoint
+
+The project also includes a WebSocket notification stream.
+
+- `ws/notification/`
+  - Real-time notification channel for scheduling updates.
+  - Integrated through `apps.scheduling.webshocker_urls` and `NotificationConsumer`.
+
+Example WebSocket URL:
+```text
+ws://127.0.0.1:8000/ws/notification/
+```
+
+---
+
+## 8) Typical request examples
+
+### Login
+```http
+POST /login/
+Content-Type: application/json
+
+{
+  "email": "student@example.com",
+  "password": "StrongPassword123"
+}
+```
+
+### Get timetable
+```http
+GET /scheduling/timetable/
+Authorization: Bearer <access_token>
+```
+
+### Search room
+```http
+GET /rooms/search/?q=301
+Authorization: Bearer <access_token>
+```
+
+### Create class session
+```http
+POST /scheduling/
+Authorization: Bearer <access_token>
+Content-Type: application/json
+
+{
+  "date": "2026-09-30",
+  "start_time": "10:00:00",
+  "end_time": "11:00:00",
+  "teacher": 1,
+  "batch": 2,
+  "room": 3,
+  "subject": 4,
+  "status": "scheduled"
+}
+```
+
+---
+
+## 9) Endpoint summary table
+
+| Module | Route prefix | Purpose |
+|---|---|---|
+| Account | `/` | auth, profile, dashboard, search |
+| Academics | `/api/` | departments, semesters, batches, subjects |
+| Rooms | `/rooms/` | room CRUD, search, availability |
+| Scheduling | `/scheduling/` | class session CRUD and conflict checks |
+| Agent | `/agent/` | AI chat and knowledge upload |
+| Docs | `/docs/`, `/schema/` | API docs |
+| WebSocket | `/ws/notification/` | live notifications |
+
+---
+
+The endpoint list above reflects the actual code in the project and is meant to be a practical reference for developers and API consumers working with this campus management backend.
+
+---
+
 # 1. Project Structure
 
 ```text

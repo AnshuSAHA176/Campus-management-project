@@ -183,9 +183,8 @@ SPECTACULAR_SETTINGS = {
 }
 
 CSRF_TRUSTED_ORIGINS = [
-    "https://lay-apparel-urls-thousand.trycloudflare.com",
+    "https://frederick-appointments-competitors-directories.trycloudflare.com",
 ]
-
 
 cloudinary.config(
     cloud_name=os.environ.get("CLOUDINARY_CLOUD_NAME"),
@@ -214,5 +213,7 @@ CORS_ALLOWED_ORIGINS = [
     "https://casting-showcase-respect-situated.trycloudflare.com",
     "http://localhost:3000",  # Your local React/Vue dev server
     "http://127.0.0.1:3000",
+    "http://127.0.0.1:5500",
     "https://yourfrontenddomain.com",
+    "https://dist-lawsuit-lions-tariff.trycloudflare.com",
 ]
