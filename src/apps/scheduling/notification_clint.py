@@ -29,11 +29,7 @@ def wanotification(self, instance_id):
     
     # Create Brevo client once
     
-    configuration = sib_api_v3_sdk.Configuration()
-    configuration.api_key["api-key"] = settings.BREVO_API_KEY
-
-    api_client = sib_api_v3_sdk.ApiClient(configuration)
-    api = sib_api_v3_sdk.TransactionalEmailsApi(api_client)
+  
 
     students = (
         class_session.batch.students

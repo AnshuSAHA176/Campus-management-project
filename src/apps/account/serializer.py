@@ -60,6 +60,7 @@ class StudentProfileSerializer(serializers.ModelSerializer):
             'enrollment_date',
             'profile_picture'
         ]
+        
 class TeacherProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = Teacher

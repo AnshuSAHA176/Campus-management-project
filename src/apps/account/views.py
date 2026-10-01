@@ -7,13 +7,13 @@ from .serializer import (
     LoginSerializer,
     StudentProfileSerializer,
     TeacherProfileSerializer,
-    ActivitySerializer
+    ActivitySerializer,
 )
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.response import Response
 from rest_framework.permissions import BasePermission
 
-from django.db.models import Count, Q,Window
+from django.db.models import Count, Q, Window
 
 from apps.rooms.models import Room
 from apps.academics.models import Subject, Batch
@@ -23,6 +23,7 @@ from django.utils import timezone
 import datetime
 from django.db import IntegrityError
 from rest_framework import status
+
 
 class IsStudent(BasePermission):
     def has_permission(self, request, view):
@@ -39,18 +40,22 @@ class RegisterView(generics.CreateAPIView):
     permission_classes = [AllowAny]
     queryset = User.objects.all()
     serializer_class = RegisterSerializer
+
     def post(self, request, *args, **kwargs):
         try:
 
-            user = super().post(request, *args, **kwargs)
+            serializer = self.get_serializer(data=request.data)
+            serializer.is_valid()
+            serializer.save()
+            
+            
+            
         except IntegrityError:
             return Response(
-                {
-                    "error": "A user with this email already exists."
-                },
+                {"error": "A user with this email already exists."},
                 status=status.HTTP_409_CONFLICT,
             )
-        return user
+        return Response(serializer.data,status=status.HTTP_201_CREATED)
 
 
 class LoginView(APIView):
@@ -63,7 +68,9 @@ class LoginView(APIView):
         refresh = RefreshToken.for_user(user=user)
         access = refresh.access_token
 
-        return Response({"access": str(access), "refresh": str(refresh),"role":user.role})
+        return Response(
+            {"access": str(access), "refresh": str(refresh), "role": user.role}
+        )
 
 
 class StudentProfile(generics.RetrieveUpdateAPIView):
@@ -161,17 +168,17 @@ class AdminDashBoard(APIView):
         batch = Batch.objects.count()
 
         activity_stats = Activity.objects.aggregate(
-    rescheduled_this_week=Count(
-        "id",
-        filter=Q(
-            type=Activity.ActivityType.CLASS_RESCHEDULED,
-            created_at__date__range=[
-                start_of_week,
-                end_of_week,
-            ],
-        ),
-    ),
-)
+            rescheduled_this_week=Count(
+                "id",
+                filter=Q(
+                    type=Activity.ActivityType.CLASS_RESCHEDULED,
+                    created_at__date__range=[
+                        start_of_week,
+                        end_of_week,
+                    ],
+                ),
+            ),
+        )
 
         recent_activity = Activity.objects.order_by("-created_at")[:5]
 
@@ -201,7 +208,9 @@ class AdminDashBoard(APIView):
                     "rooms_in_use": rooms["rooms_in_use"],
                     "available_rooms": rooms["total_rooms"] - rooms["rooms_in_use"],
                     "utilization_percentage": round(
-                        (rooms["rooms_in_use"] / rooms["total_rooms"]) * 100 if rooms['total_rooms']>0. else 0
+                        (rooms["rooms_in_use"] / rooms["total_rooms"]) * 100
+                        if rooms["total_rooms"] > 0.0
+                        else 0
                     ),
                 },
                 "batches": {
@@ -222,7 +231,7 @@ class AdminDashBoard(APIView):
 
 class AuditLogs(generics.ListAPIView):
     permission_classes = [IsAdminUser]
-    queryset = Activity.objects.order_by('-created_at')
+    queryset = Activity.objects.order_by("-created_at")
     serializer_class = ActivitySerializer
 
 
@@ -237,12 +246,7 @@ class TeacherSearchView(APIView):
             return Response([])
 
         teachers = Teacher.objects.filter(
-            Q(full_name__icontains=query) |
-            Q(employee_id__icontains=query)
-        ).values(
-            "id",
-            "full_name",
-            "employee_id",
-        )[:10]
+            Q(full_name__icontains=query) | Q(employee_id__icontains=query)
+        ).values("id", "full_name", "employee_id",)[:10]
 
         return Response(list(teachers))

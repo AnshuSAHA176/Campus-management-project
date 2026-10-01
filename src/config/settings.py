@@ -21,7 +21,7 @@ import cloudinary.uploader
 import cloudinary.api_client
 import os
 from dotenv import load_dotenv
-
+from datetime import timedelta
 load_dotenv()
 
 BREVO_API_KEY = os.environ.get("BREVO_API_KEY")
@@ -63,6 +63,7 @@ INSTALLED_APPS = [
     "cloudinary",
     "silk",
      "corsheaders",
+     "rest_framework_simplejwt.token_blacklist",
 ]
 
 MIDDLEWARE = [
@@ -189,7 +190,7 @@ SPECTACULAR_SETTINGS = {
 }
 
 CSRF_TRUSTED_ORIGINS = [
-    "https://everyday-jonathan-usc-travels.trycloudflare.com",
+    "https://pontiac-trustee-drops-new.trycloudflare.com",
 ]
 
 cloudinary.config(
@@ -224,6 +225,19 @@ CORS_ALLOWED_ORIGINS = [
     "https://ends-shoulder-initiated-thank.trycloudflare.com",
     "http://localhost:517",
     "https://course-promote-bundle-dvds.trycloudflare.com",
-    "https://index-drove-warrior-taken.trycloudflare.com",
+    "https://displayed-energy-elementary-funny.trycloudflare.com",
+    "http://localhost:5173",
 ]
 
+
+
+SIMPLE_JWT = {
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=15),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=21),
+
+    
+    "ROTATE_REFRESH_TOKENS": False,
+    "BLACKLIST_AFTER_ROTATION": False,
+
+    "AUTH_HEADER_TYPES": ("Bearer",),
+}

@@ -4,6 +4,8 @@ import uuid
 from .custom_manager import CustomeUsermanager
 from django.contrib.auth.models import PermissionsMixin
 from cloudinary.models import CloudinaryField
+import uuid
+
 
 class User(AbstractBaseUser, PermissionsMixin):
 
@@ -48,6 +50,8 @@ class Student(models.Model):
         on_delete=models.CASCADE,
         related_name="student_profile"
     )
+
+    
 
     student_id = models.CharField(max_length=50, unique=True,blank=True, null=True)
     batch = models.ForeignKey(
