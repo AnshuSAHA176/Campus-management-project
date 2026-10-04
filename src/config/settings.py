@@ -41,7 +41,9 @@ DEBUG = True
 
 ALLOWED_HOSTS = ["*"]
 
+import time
 
+print("Starting app initialization...", flush=True)
 # Application definition
 
 INSTALLED_APPS = [
@@ -65,6 +67,9 @@ INSTALLED_APPS = [
      "corsheaders",
      "rest_framework_simplejwt.token_blacklist",
 ]
+
+
+
 
 MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",

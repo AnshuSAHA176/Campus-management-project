@@ -34,3 +34,28 @@ class SubjectSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         ]
+
+class DepartmentSearchSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Department
+        fields=[
+            "id",
+            "name"
+        ]
+
+
+
+
+class batchSearchSerializer(serializers.ModelSerializer):
+    department_name = serializers.CharField(source = 'department.name')
+    semester_name = serializers.CharField(source = 'semester.name')
+    class Meta:
+        model = Batch
+        fields=[
+            "id",
+            'department_name',
+            'semester_name'
+        ]
+
+
+

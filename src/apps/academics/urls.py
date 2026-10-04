@@ -7,7 +7,9 @@ from .views import (
     BatchViewSet,
     SubjectViewSet,
     BatchSearchView,
-    SubjectSearch
+    SubjectSearch,
+    DeparmentSearch,
+    BatchAllTItleView
 )
 
 router = DefaultRouter()
@@ -37,6 +39,17 @@ router.register(
 )
 
 urlpatterns = [
+    
+    path(
+        "departments/all/",
+        DeparmentSearch.as_view(),
+        name="batch-search",
+    ),
+    path(
+        "batches/all/",
+        BatchAllTItleView.as_view(),
+        name="batch-search",
+    ),
     path(
         "batches/search/",
         BatchSearchView.as_view(),

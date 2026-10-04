@@ -51,7 +51,7 @@ class Batch(models.Model):
         Semester,
         on_delete=models.PROTECT,
         related_name="batches"
-    )
+    ) 
 
     name = models.CharField(max_length=100)
 
