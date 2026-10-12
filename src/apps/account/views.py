@@ -93,34 +93,53 @@ class TeacherProfile(generics.RetrieveUpdateAPIView):
 class AdminDashBoard(APIView):
     permission_classes = [IsAdminUser]
 
+    
     def get(self, request):
-
-        prefix = f"dashboard"
+        cache_key = "dashboard"
         lock_key = "dashboard:rebuild_lock"
-        cache_data = cache.get(prefix)
-        if cache_data:
+
+        # Check cache first
+        cache_data = cache.get(cache_key)
+        if cache_data is not None:
             return Response(cache_data)
-        lock_aqueired = cache.add(key=lock_key, value="locked", timeout=30)
-        if lock_aqueired:
+
+        # Acquire lock
+        lock_acquired = cache.add(
+            lock_key,
+            "locked",
+            timeout=30,
+        )
+
+        if lock_acquired:
             try:
-                cache_data = cache.get(key=prefix)
+                # Double-check cache
+                cache_data = cache.get(cache_key)
                 if cache_data is not None:
-                    return Response(data)
+                    return Response(cache_data)
+
+                # Build dashboard
                 data = self.build_dashboard()
-                cache.set(prefix, data, timeout=3600)
+
+                # Cache for 1 hour
+                cache.set(cache_key, data, timeout=3600)
 
                 return Response(data)
+
             finally:
                 cache.delete(lock_key)
-        data = cache.get(prefix)
-        if data is not None:
-            return Response(data)
+
+        # Another request is building the dashboard
+        cache_data = cache.get(cache_key)
+        if cache_data is not None:
+            return Response(cache_data)
 
         return Response(
             {"detail": "Please retry shortly."},
             status=503,
         )
 
+
+        
     def build_dashboard():
 
         overview = User.objects.prefetch_related(
