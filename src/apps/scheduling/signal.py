@@ -1,10 +1,10 @@
-from django.db.models.signals import pre_save, post_save
+from django.db.models.signals import pre_save, post_save,post_delete
 from django.dispatch import receiver
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
 
 from .models import ClassSession, Activity
-
+from django.core.cache import cache
 
 @receiver(pre_save, sender=ClassSession)
 def beforesave(sender, instance, **kwargs):
@@ -161,3 +161,10 @@ def Notification(sender, instance, created, **kwargs):
             group_name,
             event
         )
+
+@receiver([post_save,post_delete],sender=ClassSession)
+def cache_delete(sender,instance,**kwargs):
+    cache.delete('dashboard')
+@receiver([post_save,post_delete],sender=Activity)
+def cache_delete(sender,instance,**kwargs):
+    cache.delete('dashboard')

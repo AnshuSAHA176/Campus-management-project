@@ -84,5 +84,20 @@ class SubjectSearch(APIView):
 class BatchAllTItleView(generics.ListAPIView):
     permission_classes = [IsAuthenticated]
     serializer_class = batchSearchSerializer
-    queryset = Batch.objects.select_related("department",
-"semester")
+    queryset = (
+    Batch.objects
+    .only(
+        "id",
+        "is_active",
+        "department_id",
+        "department__id",
+        "department__name",
+       
+        "semester_id",
+        "semester__id",
+       
+        "semester__name",
+    )
+    .select_related("department", "semester")
+    .filter(is_active=True)
+)

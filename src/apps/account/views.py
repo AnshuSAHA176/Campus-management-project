@@ -23,6 +23,7 @@ from django.utils import timezone
 import datetime
 from django.db import IntegrityError
 from rest_framework import status
+from django.core.cache import cache
 
 
 class IsStudent(BasePermission):
@@ -47,15 +48,13 @@ class RegisterView(generics.CreateAPIView):
             serializer = self.get_serializer(data=request.data)
             serializer.is_valid()
             serializer.save()
-            
-            
-            
+
         except IntegrityError:
             return Response(
                 {"error": "A user with this email already exists."},
                 status=status.HTTP_409_CONFLICT,
             )
-        return Response(serializer.data,status=status.HTTP_201_CREATED)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
 class LoginView(APIView):
@@ -95,6 +94,34 @@ class AdminDashBoard(APIView):
     permission_classes = [IsAdminUser]
 
     def get(self, request):
+
+        prefix = f"dashboard"
+        lock_key = "dashboard:rebuild_lock"
+        cache_data = cache.get(prefix)
+        if cache_data:
+            return Response(cache_data)
+        lock_aqueired = cache.add(key=lock_key, value="locked", timeout=30)
+        if lock_aqueired:
+            try:
+                cache_data = cache.get(key=prefix)
+                if cache_data is not None:
+                    return Response(data)
+                data = self.build_dashboard()
+                cache.set(prefix, data, timeout=3600)
+
+                return Response(data)
+            finally:
+                cache.delete(lock_key)
+        data = cache.get(prefix)
+        if data is not None:
+            return Response(data)
+
+        return Response(
+            {"detail": "Please retry shortly."},
+            status=503,
+        )
+
+    def build_dashboard():
 
         overview = User.objects.prefetch_related(
             "student_profile", "teacher_profile"
@@ -181,52 +208,49 @@ class AdminDashBoard(APIView):
         )
 
         recent_activity = Activity.objects.order_by("-created_at")[:5]
-
-        return Response(
-            {
-                "overview": {
-                    "total_students": overview["total_students"],
-                    "total_teachers": overview["total_teachers"],
-                    "total_subjects": Subject.objects.count(),
-                    "total_batches": Batch.objects.count(),
-                    "total_rooms": Room.objects.count(),
-                },
-                "today": {
-                    "total_classes": schedule["total_classes"],
-                    "ongoing_classes": schedule["ongoing_classes"],
-                    "scheduled_classes": schedule["scheduled_classes"],
-                    "completed_classes": schedule["completed_classes"],
-                },
-                "schedule": {
-                    "classes_this_week": schedule["classes_this_week"],
-                    "classes_next_week": schedule["classes_next_week"],
-                    "cancelled_this_week": schedule["cancelled_this_week"],
-                    "rescheduled_this_week": activity_stats["rescheduled_this_week"],
-                },
-                "rooms": {
-                    "total_rooms": rooms["total_rooms"],
-                    "rooms_in_use": rooms["rooms_in_use"],
-                    "available_rooms": rooms["total_rooms"] - rooms["rooms_in_use"],
-                    "utilization_percentage": round(
-                        (rooms["rooms_in_use"] / rooms["total_rooms"]) * 100
-                        if rooms["total_rooms"] > 0.0
-                        else 0
-                    ),
-                },
-                "batches": {
-                    "active_batches": batch,
-                    "total_students": overview["total_students"],
-                },
-                "recent_activity": [
-                    {
-                        "type": activity.type,
-                        "message": activity.message,
-                        "created_at": activity.created_at,
-                    }
-                    for activity in recent_activity
-                ],
-            }
-        )
+        return {
+            "overview": {
+                "total_students": overview["total_students"],
+                "total_teachers": overview["total_teachers"],
+                "total_subjects": Subject.objects.count(),
+                "total_batches": Batch.objects.count(),
+                "total_rooms": Room.objects.count(),
+            },
+            "today": {
+                "total_classes": schedule["total_classes"],
+                "ongoing_classes": schedule["ongoing_classes"],
+                "scheduled_classes": schedule["scheduled_classes"],
+                "completed_classes": schedule["completed_classes"],
+            },
+            "schedule": {
+                "classes_this_week": schedule["classes_this_week"],
+                "classes_next_week": schedule["classes_next_week"],
+                "cancelled_this_week": schedule["cancelled_this_week"],
+                "rescheduled_this_week": activity_stats["rescheduled_this_week"],
+            },
+            "rooms": {
+                "total_rooms": rooms["total_rooms"],
+                "rooms_in_use": rooms["rooms_in_use"],
+                "available_rooms": rooms["total_rooms"] - rooms["rooms_in_use"],
+                "utilization_percentage": round(
+                    (rooms["rooms_in_use"] / rooms["total_rooms"]) * 100
+                    if rooms["total_rooms"] > 0.0
+                    else 0
+                ),
+            },
+            "batches": {
+                "active_batches": batch,
+                "total_students": overview["total_students"],
+            },
+            "recent_activity": [
+                {
+                    "type": activity.type,
+                    "message": activity.message,
+                    "created_at": activity.created_at,
+                }
+                for activity in recent_activity
+            ],
+        }
 
 
 class AuditLogs(generics.ListAPIView):

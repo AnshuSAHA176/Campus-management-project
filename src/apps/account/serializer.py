@@ -68,6 +68,7 @@ class TeacherProfileSerializer(serializers.ModelSerializer):
             'employee_id',
             'department',
             'designation',
+            'full_name',
             'phone',
             'profile_picture'
         ]

@@ -20,5 +20,5 @@ urlpatterns = [
     path('rooms/',include('apps.rooms.urls')),
     path('scheduling/',include('apps.scheduling.urls')),
     path('agent/',include('apps.agent.urls')),
-    path('silk/', include('silk.urls', namespace='silk')),
+    # path('silk/', include('silk.urls', namespace='silk')),
 ]

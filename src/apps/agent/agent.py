@@ -1,54 +1,29 @@
-from langgraph.graph import StateGraph, START, END, add_messages
-from pydantic import BaseModel
+
 from typing import Annotated
-from .tools import Tools
-from .llm import get_model
-from langgraph.prebuilt import ToolNode, tools_condition
-from .domain import domain_classifier
-from langchain.messages import HumanMessage, AIMessage
-from langgraph.checkpoint.memory import InMemorySaver
-
-from langchain_core.messages import HumanMessage
-
+from pydantic import BaseModel
 
 CAMPUS_KEYWORDS = {
-    "campus",
-    "university",
-    "college",
-    "department",
-    "student",
-    "students",
-    "teacher",
-    "teachers",
-    "professor",
-    "batch",
-    "subject",
-    "classroom",
-    "room",
-    "schedule",
-    "timetable",
-    "class",
-    "attendance",
-    "exam",
-    "examination",
-    "admission",
-    "curriculum",
-    "course",
-    "courses",
-    "research",
-    "regulation",
-    "regulations",
-    "policy",
-    "policies",
-    "notice",
-    "document",
-    "documents",
-    "pdf",
-    "knowledge",
-    "academic",
+    "campus", "university", "college", "department",
+    "student", "students", "teacher", "teachers",
+    "professor", "batch", "subject", "classroom",
+    "room", "schedule", "timetable", "class",
+    "attendance", "exam", "examination", "admission",
+    "curriculum", "course", "courses", "research",
+    "regulation", "regulations", "policy", "policies",
+    "notice", "document", "documents", "pdf",
+    "knowledge", "academic",
 }
-cheakpointer = InMemorySaver()
+
 def get_agent(access_token):
+    from langgraph.graph import StateGraph, START, END, add_messages
+    from langgraph.prebuilt import ToolNode, tools_condition
+    from langgraph.checkpoint.memory import InMemorySaver
+    from langchain.messages import HumanMessage, AIMessage
+
+    from .tools import Tools
+    from .llm import get_model
+    from .domain import domain_classifier
+
     model = get_model()
 
     class State(BaseModel):

@@ -34,20 +34,16 @@ BREVO_SENDER_NAME = os.environ.get(
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = "django-insecure-#&d_b*7n6f03y+%el2g*e#t$!z=l*z0fqjy#e_pv)$14(gzox_"
-
+SECRET_KEY = os.environ.get('SECRET_KEY')
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
 ALLOWED_HOSTS = ["*"]
 
-import time
 
-print("Starting app initialization...", flush=True)
-# Application definition
 
 INSTALLED_APPS = [
-    "daphne",
+     "daphne",
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -63,7 +59,7 @@ INSTALLED_APPS = [
     'apps.agent',
     "apps.scheduling",
     "cloudinary",
-    "silk",
+    # "silk", 
      "corsheaders",
      "rest_framework_simplejwt.token_blacklist",
 ]
@@ -80,7 +76,8 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
-    "silk.middleware.SilkyMiddleware",
+    # "silk.middleware.SilkyMiddleware",
+    
 ]
 
 ROOT_URLCONF = "config.urls"
@@ -115,7 +112,7 @@ DATABASES = {
         "PASSWORD": "postgres",
         "HOST": "127.0.0.1",
         "PORT": "5432",
-        "CONN_MAX_AGE": 60,
+        "CONN_MAX_AGE": 0,
     }
 }
 
@@ -215,24 +212,20 @@ CHANNEL_LAYERS = {
 }
 
 
-CELERY_BROKER_URL = "redis://127.0.0.1:6379/1"
-CELERY_RESULT_BACKEND = "redis://127.0.0.1:6379/1"
+CELERY_BROKER_URL = "redis://127.0.0.1:6378/1"
+CELERY_RESULT_BACKEND = "redis://127.0.0.1:6378/1"
+
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.redis.RedisCache",
+        "LOCATION": "redis://127.0.0.1:6378",
+    }
+}
 
 TIME_ZONE = "Asia/Kolkata"
 USE_TZ = True
 
-CORS_ALLOWED_ORIGINS = [
-    "https://casting-showcase-respect-situated.trycloudflare.com",
-    "http://localhost:3000",  # Your local React/Vue dev server
-    "http://127.0.0.1:3000",
-    "http://127.0.0.1:5500",
-    "https://yourfrontenddomain.com",
-    "https://ends-shoulder-initiated-thank.trycloudflare.com",
-    "http://localhost:517",
-    "https://course-promote-bundle-dvds.trycloudflare.com",
-    "https://displayed-energy-elementary-funny.trycloudflare.com",
-    "http://localhost:5173",
-]
+CORS_ALLOWED_ORIGINS = ['https://los-assessment-hire-sorted.trycloudflare.com']
 
 
 

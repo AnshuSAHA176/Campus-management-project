@@ -47,13 +47,13 @@ class DepartmentSearchSerializer(serializers.ModelSerializer):
 
 
 class batchSearchSerializer(serializers.ModelSerializer):
-    department_name = serializers.CharField(source = 'department.name')
+    department_code = serializers.CharField(source = 'department.code')
     semester_name = serializers.CharField(source = 'semester.name')
     class Meta:
         model = Batch
         fields=[
             "id",
-            'department_name',
+            'department_code',
             'semester_name'
         ]
 

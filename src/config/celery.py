@@ -22,9 +22,3 @@ def debug_task(self):
     print(f'Request: {self.request!r}')
 
 
-app.conf.beat_schedule = {
-    "test-before-class": {
-        "task": "apps.scheduling.notification_clint.beforeclass",
-        "schedule": crontab(minute="*"),
-    },
-}
