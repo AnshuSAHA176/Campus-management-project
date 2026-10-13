@@ -1,17 +1,19 @@
 import React from "react";
 import { Route, Routes } from "react-router-dom";
-import LandingPage from "./pages/LandingPage.jsx";
-import StudentLogin from "./pages/StudentLogin.jsx";
-import StudentRegister from "./pages/StudentRegister.jsx";
-import TeacherLogin from "./pages/TeacherLogin.jsx";
-import StudentHome from "./pages/StudentHome.jsx";
-import TeacherHome from "./pages/TeacherHome.jsx";
-import StudentLogout from "./pages/StudentLogout.jsx";
-import TeacherLogout from "./pages/TeacherLogout.jsx";
-import StudentProtectWrapper from "./pages/StudentProtectWrapper.jsx";
-import StudentProfile from "./pages/StudentProfile.jsx";
-import TeacherProtectWrapper from "./pages/TeacherProtectWrapper.jsx";
-import TeacherProfile from "./pages/TeacherProfile.jsx";
+import LandingPage from "./components/LandingPage.jsx";
+import StudentLogin from "./features/auth/pages/StudentLogin.jsx";
+import StudentRegister from "./features/auth/pages/StudentRegister.jsx";
+import TeacherLogin from "./features/auth/pages/TeacherLogin.jsx";
+import StudentDashboard from "./features/student/pages/StudentDashboard.jsx";
+import TeacherDashboard from "./features/teacher/pages/TeacherDashboard.jsx";
+import StudentLogout from "./features/auth/pages/StudentLogout.jsx";
+import TeacherLogout from "./features/auth/pages/TeacherLogout.jsx";
+import StudentProtectWrapper from "./features/auth/guards/StudentProtectWrapper.jsx";
+import TeacherProtectWrapper from "./features/auth/guards/TeacherProtectWrapper.jsx";
+import StudentProfileSetup from "./features/student/pages/StudentProfileSetup.jsx";
+import TeacherProfileSetup from "./features/teacher/pages/TeacherProfileSetup.jsx";
+
+import CampusMapPage from "./features/campus-map/pages/CampusMapPage.jsx";
 
 export default function App() {
   return (
@@ -22,39 +24,45 @@ export default function App() {
         <Route path="/teacher-login" element={<TeacherLogin />} />
         <Route path="/student-register" element={<StudentRegister />} />
         <Route
-          path="/student-home"
+          path="/student/dashboard"
           element={
             <StudentProtectWrapper>
-              <StudentHome />
+              <StudentDashboard />
             </StudentProtectWrapper>
           }
         />
         <Route
-          path="/teacher-home"
+          path="/teacher/dashboard"
           element={
             <TeacherProtectWrapper>
-              <TeacherHome />
+              <TeacherDashboard />
             </TeacherProtectWrapper>
           }
         />
 
         <Route
-          path="/student-profile"
+          path="/student-profile-setup"
           element={
             <StudentProtectWrapper>
-              <StudentProfile />
+              <StudentProfileSetup />
             </StudentProtectWrapper>
           }
         />
 
         <Route
-          path="/teacher-profile"
+          path="/teacher-profile-setup"
           element={
             <TeacherProtectWrapper>
-              <TeacherProfile />
+              <TeacherProfileSetup />
             </TeacherProtectWrapper>
           }
         />
+
+          <Route 
+          path="/campus-map"
+          element={<CampusMapPage/>}
+          
+          />
 
         <Route
           path="/student/logout"

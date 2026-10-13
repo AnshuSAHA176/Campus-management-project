@@ -10,7 +10,7 @@ import IconButton from "@mui/material/IconButton";
 import Visibility from "@mui/icons-material/Visibility";
 import VisibilityOff from "@mui/icons-material/VisibilityOff";
 
-import { teacherDataContext } from "../context/TeacherContext";
+import { teacherDataContext } from "../../../context/TeacherContext";
 import axios from "axios";
 
 export default function TeacherLogin() {
@@ -67,15 +67,38 @@ export default function TeacherLogin() {
         );
 
         if (response.status === 200) {
+          const accessToken = response.data.access;
+
           setTeacher(response.data);
 
-          localStorage.setItem("accessToken", response.data.access);
+          localStorage.setItem("accessToken", accessToken);
 
           localStorage.setItem("refreshToken", response.data.refresh);
 
           localStorage.setItem("role", response.data.role);
 
-          navigate("/teacher-profile");
+          const profileResponse = await axios.get(
+            `${import.meta.env.VITE_BASE_URL}/teacher_profile/`,
+            {
+              headers: {
+                Authorization: `Bearer ${accessToken}`,
+              },
+            },
+          );
+
+          const profile = profileResponse.data;
+
+          //Check whether required profile fields are filled
+          const isProfileComplete =
+            Boolean(profile.full_name?.trim()) &&
+            Boolean(profile.department) &&
+            Boolean(profile.designation?.trim());
+
+          if (isProfileComplete) {
+            navigate("/teacher/dashboard");
+          } else {
+            navigate("/teacher-profile-setup");
+          }
         }
       } catch (err) {
         if (err.response?.status === 400) {
@@ -254,7 +277,7 @@ export default function TeacherLogin() {
               variant="contained"
               fullWidth
               sx={{
-                background: "linear-gradient(to right, #E85A24, #9b2b05)",
+                background: "linear-gradient(to right, #E85A24, #6b1b00)",
                 borderRadius: "12px",
                 padding: "12px",
                 fontSize: "18px",

@@ -10,7 +10,7 @@ import IconButton from "@mui/material/IconButton";
 import Visibility from "@mui/icons-material/Visibility";
 import VisibilityOff from "@mui/icons-material/VisibilityOff";
 
-import { studentDataContext } from "../context/StudentContext";
+import { studentDataContext } from "../../../context/StudentContext";
 import axios from "axios";
 
 export default function StudentRegister() {
@@ -82,7 +82,7 @@ export default function StudentRegister() {
           localStorage.setItem("refreshToken", loginResponse.data.refresh);
 
           localStorage.setItem("role", loginResponse.data.role);
-          navigate("/student-profile");
+          navigate("/student-profile-setup");
         }
       } catch (err) {
         if (err.response?.status === 409) {
@@ -278,7 +278,7 @@ export default function StudentRegister() {
               variant="contained"
               fullWidth
               sx={{
-                background: "linear-gradient(to right, #E85A24, #9b2b05)",
+                background: "linear-gradient(to right, #E85A24, #6b1b00)",
                 borderRadius: "12px",
                 padding: "12px",
                 fontSize: "18px",

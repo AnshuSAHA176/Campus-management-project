@@ -1,28 +1,28 @@
-import React, { useContext, useEffect, useState } from "react";
+import { useContext, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { studentDataContext } from "../context/StudentContext";
+import { teacherDataContext } from "../../../context/TeacherContext";
 import axios from "axios";
 
-export default function StudentProtectWrapper({ children }) {
+export default function TeacherProtectWrapper({ children }) {
   const navigate = useNavigate();
 
-  const { student, setStudent } = useContext(studentDataContext);
+  const { teacher, setTeacher } = useContext(teacherDataContext);
 
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const verifyStudent = async () => {
+    const verifyTeacher = async () => {
       const accessToken = localStorage.getItem("accessToken");
       const refreshToken = localStorage.getItem("refreshToken");
 
       if (!accessToken || !refreshToken) {
-        navigate("/student-login", { replace: true });
+        navigate("/teacher-login", { replace: true });
         return;
       }
 
       try {
         const response = await axios.get(
-          `${import.meta.env.VITE_BASE_URL}/student_profile/`,
+          `${import.meta.env.VITE_BASE_URL}/teacher_profile/`,
           {
             headers: {
               Authorization: `Bearer ${accessToken}`,
@@ -32,7 +32,7 @@ export default function StudentProtectWrapper({ children }) {
 
         // Access token is valid
         if (response.status === 200) {
-          setStudent(response.data);
+          setTeacher(response.data);
           setIsLoading(false);
         }
       } catch (err) {
@@ -52,7 +52,7 @@ export default function StudentProtectWrapper({ children }) {
 
             // Retry profile request with new access token
             const profileResponse = await axios.get(
-              `${import.meta.env.VITE_BASE_URL}/student_profile/`,
+              `${import.meta.env.VITE_BASE_URL}/teacher_profile/`,
               {
                 headers: {
                   Authorization: `Bearer ${newAccessToken}`,
@@ -61,7 +61,7 @@ export default function StudentProtectWrapper({ children }) {
             );
 
             if (profileResponse.status === 200) {
-              setStudent(profileResponse.data);
+              setTeacher(profileResponse.data);
               setIsLoading(false);
             }
           } catch (refreshError) {
@@ -70,7 +70,7 @@ export default function StudentProtectWrapper({ children }) {
             localStorage.removeItem("accessToken");
             localStorage.removeItem("refreshToken");
 
-            navigate("/student-login", { replace: true });
+            navigate("/teacher-login", { replace: true });
           }
         } else {
           console.log(err);
@@ -78,13 +78,13 @@ export default function StudentProtectWrapper({ children }) {
           localStorage.removeItem("accessToken");
           localStorage.removeItem("refreshToken");
 
-          navigate("/student-login", { replace: true });
+          navigate("/teacher-login", { replace: true });
         }
       }
     };
 
-    verifyStudent();
-  }, [navigate, setStudent]);
+    verifyTeacher();
+  }, [navigate, setTeacher]);
 
   if (isLoading) {
     return (
@@ -94,5 +94,5 @@ export default function StudentProtectWrapper({ children }) {
     );
   }
 
-  return <> {children} </>;
+  return <>{children}</>;
 }
