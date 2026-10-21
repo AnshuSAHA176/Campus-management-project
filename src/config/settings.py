@@ -112,7 +112,7 @@ DATABASES = {
         "PASSWORD": "postgres",
         "HOST": "127.0.0.1",
         "PORT": "5432",
-        "CONN_MAX_AGE": 0,
+        "CONN_MAX_AGE": 60,
     }
 }
 
@@ -225,7 +225,7 @@ CACHES = {
 TIME_ZONE = "Asia/Kolkata"
 USE_TZ = True
 
-CORS_ALLOWED_ORIGINS = ['https://los-assessment-hire-sorted.trycloudflare.com']
+CORS_ALLOWED_ORIGINS = ['https://persistent-host-purpose-matched.trycloudflare.com']
 
 
 

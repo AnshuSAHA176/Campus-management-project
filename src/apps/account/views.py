@@ -8,6 +8,7 @@ from .serializer import (
     StudentProfileSerializer,
     TeacherProfileSerializer,
     ActivitySerializer,
+    TeacherProfileTitleSerializer
 )
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.response import Response
@@ -24,6 +25,7 @@ import datetime
 from django.db import IntegrityError
 from rest_framework import status
 from django.core.cache import cache
+from rest_framework import viewsets
 
 
 class IsStudent(BasePermission):
@@ -140,7 +142,7 @@ class AdminDashBoard(APIView):
 
 
         
-    def build_dashboard():
+    def build_dashboard(self):
 
         overview = User.objects.prefetch_related(
             "student_profile", "teacher_profile"
@@ -293,3 +295,22 @@ class TeacherSearchView(APIView):
         ).values("id", "full_name", "employee_id",)[:10]
 
         return Response(list(teachers))
+
+class OurTeacherView(viewsets.ReadOnlyModelViewSet):
+    permission_classes =[IsAuthenticated]
+    serializer_class = TeacherProfileSerializer
+    def get_queryset(self):
+        user = self.request.user
+        if user.role == 'student':
+            return Teacher.objects.filter(department__batches=user.student_profile.batch)
+
+        elif user.role == 'teacher':
+            return Teacher.objects.filter(department = user.teacher_profile.department)
+        return Teacher.objects.all()
+    def get_serializer_class(self):
+        if self.action == 'list':
+            return TeacherProfileTitleSerializer
+        return super().get_serializer_class()
+
+    
+    

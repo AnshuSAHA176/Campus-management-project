@@ -1,9 +1,12 @@
 
 import http from "k6/http";
 import { check, sleep } from "k6";
+import { Counter } from "k6/metrics";
+import exec from "k6/execution";
 
 const BASE_URL = "http://127.0.0.1:8000";
 
+const dashboardStatuses = new Counter("dashboard_statuses");
 
 export const options = {
   scenarios: {
@@ -27,7 +30,6 @@ export const options = {
   },
 };
 
-
 export function setup() {
   const response = http.post(
     `${BASE_URL}/login/`,
@@ -42,11 +44,7 @@ export function setup() {
     }
   );
 
-  const loginOK = check(response, {
-    "login successful": (r) => r.status === 200,
-  });
-
-  if (!loginOK) {
+  if (response.status !== 200) {
     throw new Error(
       `Login failed: status=${response.status}, body=${response.body}`
     );
@@ -55,11 +53,10 @@ export function setup() {
   const token = response.json("access");
 
   if (!token) {
-    throw new Error(
-      `Access token missing. Login response: ${response.body}`
-    );
+    throw new Error("Access token missing from login response");
   }
 
+  console.log("Login successful");
   return { token };
 }
 
@@ -68,6 +65,12 @@ export default function (data) {
     headers: {
       Authorization: `Bearer ${data.token}`,
     },
+    // Don't retry failed requests automatically.
+    redirects: 0,
+  });
+
+  dashboardStatuses.add(1, {
+    status: String(response.status),
   });
 
   check(response, {
@@ -78,6 +81,8 @@ export default function (data) {
     console.error(
       `Dashboard failed: status=${response.status}, body=${response.body}`
     );
+
+    
   }
 
   sleep(1);
