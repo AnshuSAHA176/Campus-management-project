@@ -13,12 +13,21 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.db.models import Q
 from rest_framework import generics
+from rest_framework.permissions import BasePermission
+
+class IsTeacher(BasePermission):
+    def has_permission(self, request, view):
+        return request.user.role == 'teacher' and request.user.is_authenticated
 
 
 class DepartmentViewSet(viewsets.ModelViewSet):
-    permission_classes = [IsAdminUser]
+    
     queryset = Department.objects.prefetch_related("semesters", "batches")
     serializer_class = DepartmentSerializer
+    def get_permissions(self):
+        if self.request.user.role=='teacher':
+            return [IsTeacher()]
+        return [IsAdminUser()]
 
 
 class DeparmentSearch(generics.ListAPIView):

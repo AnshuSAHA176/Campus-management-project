@@ -192,8 +192,10 @@ SPECTACULAR_SETTINGS = {
 }
 
 CSRF_TRUSTED_ORIGINS = [
-    "https://pontiac-trustee-drops-new.trycloudflare.com",
+    "https://barriers-far-sagem-radical.trycloudflare.com",
+    "https://qualified-mats-bears-ver.trycloudflare.com",
 ]
+
 
 cloudinary.config(
     cloud_name=os.environ.get("CLOUDINARY_CLOUD_NAME"),
@@ -225,7 +227,10 @@ CACHES = {
 TIME_ZONE = "Asia/Kolkata"
 USE_TZ = True
 
-CORS_ALLOWED_ORIGINS = ['https://persistent-host-purpose-matched.trycloudflare.com']
+CORS_ALLOWED_ORIGINS = [
+    "https://barriers-far-sagem-radical.trycloudflare.com",
+]
+
 
 
 
