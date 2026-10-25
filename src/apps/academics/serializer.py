@@ -1,22 +1,24 @@
 from rest_framework import serializers
-from .models import Department,Batch,Semester,Subject
+from .models import Department, Batch, Semester, Subject
 
 
 class DepartmentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Department
-        fields ='__all__'
+        fields = "__all__"
 
 
 class BatchSerializer(serializers.ModelSerializer):
     class Meta:
         model = Batch
-        fields = '__all__'
-        
+        fields = "__all__"
+
+
 class SemesterSerializer(serializers.ModelSerializer):
     class Meta:
         model = Semester
-        fields = '__all__'
+        fields = "__all__"
+
 
 class SubjectSerializer(serializers.ModelSerializer):
     class Meta:
@@ -28,34 +30,34 @@ class SubjectSerializer(serializers.ModelSerializer):
             "teachers",
             "name",
             "code",
-            
-           
             "is_active",
             "created_at",
             "updated_at",
         ]
 
+
+class SubjectTitleSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Subject
+        fields = [
+            "id",
+            "department",
+            "semester",
+            "name",
+            "is_active",
+        ]
+
+
 class DepartmentSearchSerializer(serializers.ModelSerializer):
     class Meta:
         model = Department
-        fields=[
-            "id",
-            "name"
-        ]
-
-
+        fields = ["id", "name"]
 
 
 class batchSearchSerializer(serializers.ModelSerializer):
-    department_code = serializers.CharField(source = 'department.code')
-    semester_name = serializers.CharField(source = 'semester.name')
+    department_code = serializers.CharField(source="department.code")
+    semester_name = serializers.CharField(source="semester.name")
+
     class Meta:
         model = Batch
-        fields=[
-            "id",
-            'department_code',
-            'semester_name'
-        ]
-
-
-
+        fields = ["id", "department_code", "semester_name"]

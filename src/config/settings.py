@@ -111,7 +111,7 @@ DATABASES = {
         "USER": "postgres",
         "PASSWORD": "postgres",
         "HOST": "127.0.0.1",
-        "PORT": "5432",
+        "PORT": "5434",
         "CONN_MAX_AGE": 60,
     }
 }
@@ -192,8 +192,8 @@ SPECTACULAR_SETTINGS = {
 }
 
 CSRF_TRUSTED_ORIGINS = [
-    "https://barriers-far-sagem-radical.trycloudflare.com",
-    "https://qualified-mats-bears-ver.trycloudflare.com",
+    "https://sunny-recipes-motorcycles-headers.trycloudflare.com",
+    "https://test-enquiry-freeware-disciplinary.trycloudflare.com",
 ]
 
 
@@ -214,13 +214,13 @@ CHANNEL_LAYERS = {
 }
 
 
-CELERY_BROKER_URL = "redis://127.0.0.1:6378/1"
-CELERY_RESULT_BACKEND = "redis://127.0.0.1:6378/1"
+CELERY_BROKER_URL = "redis://127.0.0.1:6379/1"
+CELERY_RESULT_BACKEND = "redis://127.0.0.1:6379/1"
 
 CACHES = {
     "default": {
         "BACKEND": "django.core.cache.backends.redis.RedisCache",
-        "LOCATION": "redis://127.0.0.1:6378",
+        "LOCATION": "redis://127.0.0.1:6379",
     }
 }
 
@@ -228,7 +228,7 @@ TIME_ZONE = "Asia/Kolkata"
 USE_TZ = True
 
 CORS_ALLOWED_ORIGINS = [
-    "https://barriers-far-sagem-radical.trycloudflare.com",
+    "https://sunny-recipes-motorcycles-headers.trycloudflare.com",
 ]
 
 
