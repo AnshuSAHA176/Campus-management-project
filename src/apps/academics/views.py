@@ -49,10 +49,22 @@ class DeparmentSearch(generics.ListAPIView):
 
 
 class BatchViewSet(viewsets.ModelViewSet):
-    permission_classes = [IsAdminUser]
-    queryset = Batch.objects.select_related("department", "semester")
+
     serializer_class = BatchSerializer
 
+    def get_permissions(self):
+        if self.action == "list":
+            return [IsTeacherorAdmin()]
+        return IsAdminUser
+
+    def get_queryset(self):
+        queryset = Batch.objects.select_related("department", "semester")
+
+        if self.request.user.role == "teacher":
+            return queryset.filter(
+                department=self.request.user.teacher_profile.department
+            )
+        return queryset
 
 class SemesterViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAdminUser]

@@ -2,11 +2,11 @@
 import http from "k6/http";
 import { check, sleep } from "k6";
 import { Counter } from "k6/metrics";
-import exec from "k6/execution";
 
-const BASE_URL = "http://127.0.0.1:8000";
+const BASE_URL = __ENV.BASE_URL || "http://127.0.0.1:8000";
 
 const dashboardStatuses = new Counter("dashboard_statuses");
+
 
 export const options = {
   scenarios: {
@@ -14,21 +14,23 @@ export const options = {
       executor: "ramping-vus",
       startVUs: 10,
       stages: [
-        { duration: "1m", target: 100 },
-        { duration: "1m", target: 250 },
-        { duration: "1m", target: 500 },
-        { duration: "2m", target: 1000 },
+        { duration: "1m", target: 2000 },
         { duration: "1m", target: 1000 },
-        { duration: "1m", target: 0 },
+        { duration: "1m", target: 1500 },
+        { duration: "1m", target: 2000 },
+        { duration: "1m", target: 2000 },
+        { duration: "30s", target: 0 },
       ],
       gracefulRampDown: "30s",
     },
   },
+
   thresholds: {
-    http_req_failed: ["rate<0.05"],
+    http_req_failed: ["rate<0.01"],
     http_req_duration: ["p(95)<1000"],
   },
 };
+
 
 export function setup() {
   const response = http.post(
@@ -41,6 +43,7 @@ export function setup() {
       headers: {
         "Content-Type": "application/json",
       },
+      redirects: 0,
     }
   );
 
@@ -65,8 +68,10 @@ export default function (data) {
     headers: {
       Authorization: `Bearer ${data.token}`,
     },
-    // Don't retry failed requests automatically.
     redirects: 0,
+    tags: {
+      endpoint: "dashboard",
+    },
   });
 
   dashboardStatuses.add(1, {
@@ -81,8 +86,6 @@ export default function (data) {
     console.error(
       `Dashboard failed: status=${response.status}, body=${response.body}`
     );
-
-    
   }
 
   sleep(1);

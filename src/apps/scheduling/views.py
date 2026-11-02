@@ -22,7 +22,7 @@ from rest_framework import generics
 from apps.rooms.models import Room
 from rest_framework.views import APIView
 from django.db.models import Q
-
+from django.utils import timezone
 
 class IsAdminOrTeacher(BasePermission):
 
@@ -63,7 +63,8 @@ class ClassSeasionViewset(viewsets.ModelViewSet):
 
         if user.role == "teacher":
             return queryset.filter(
-                teacher=user.teacher_profile  # i can changed this in future
+                teacher__department=user.teacher_profile.department,
+                date__gte=timezone.now().date()
             )
 
         return queryset

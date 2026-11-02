@@ -8,7 +8,7 @@ from .serializer import (
     StudentProfileSerializer,
     TeacherProfileSerializer,
     ActivitySerializer,
-    TeacherProfileTitleSerializer
+    TeacherProfileTitleSerializer,
 )
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.response import Response
@@ -26,6 +26,21 @@ from django.db import IntegrityError
 from rest_framework import status
 from django.core.cache import cache
 from rest_framework import viewsets
+from django_redis import get_redis_connection
+import uuid
+
+redis_client = get_redis_connection("default")
+
+
+def releaseLock(lock: str, owner: str):
+    RELEASE_LOCK = """
+    if redis.call('GET',KEYS[1]==ARGV[1]) then
+    return redis.call('DEL',KEY[1])
+    end
+    return 0
+
+"""
+    return redis_client.eval(RELEASE_LOCK, 1, lock, owner) == 1
 
 
 class IsStudent(BasePermission):
@@ -95,7 +110,6 @@ class TeacherProfile(generics.RetrieveUpdateAPIView):
 class AdminDashBoard(APIView):
     permission_classes = [IsAdminUser]
 
-    
     def get(self, request):
         cache_key = "dashboard"
         lock_key = "dashboard:rebuild_lock"
@@ -103,16 +117,15 @@ class AdminDashBoard(APIView):
         # Check cache first
         cache_data = cache.get(cache_key)
         if cache_data is not None:
+            print("CACHE HIT")
             return Response(cache_data)
-
+        print("CACHE MISS")
         # Acquire lock
-        lock_acquired = cache.add(
-            lock_key,
-            "locked",
-            timeout=30,
-        )
+        owner = str(uuid.uuid4())
+        lock_acquired = redis_client.set("locked", value=owner, nx=True, ex=60 * 2)
 
         if lock_acquired:
+            print("LOCK ACQUIRED - DATABASE QUERY")
             try:
                 # Double-check cache
                 cache_data = cache.get(cache_key)
@@ -128,8 +141,10 @@ class AdminDashBoard(APIView):
                 return Response(data)
 
             finally:
-                cache.delete(lock_key)
 
+                releaseLock(lock="locked", owner=owner)
+        else:
+            print("LOCK NOT ACQUIRED")
         # Another request is building the dashboard
         cache_data = cache.get(cache_key)
         if cache_data is not None:
@@ -140,8 +155,6 @@ class AdminDashBoard(APIView):
             status=503,
         )
 
-
-        
     def build_dashboard(self):
 
         overview = User.objects.prefetch_related(
@@ -296,21 +309,23 @@ class TeacherSearchView(APIView):
 
         return Response(list(teachers))
 
+
 class OurTeacherView(viewsets.ReadOnlyModelViewSet):
-    permission_classes =[IsAuthenticated]
+    permission_classes = [IsAuthenticated]
     serializer_class = TeacherProfileSerializer
+
     def get_queryset(self):
         user = self.request.user
-        if user.role == 'student':
-            return Teacher.objects.filter(department__batches=user.student_profile.batch)
+        if user.role == "student":
+            return Teacher.objects.filter(
+                department__batches=user.student_profile.batch
+            )
 
-        elif user.role == 'teacher':
-            return Teacher.objects.filter(department = user.teacher_profile.department)
+        elif user.role == "teacher":
+            return Teacher.objects.filter(department=user.teacher_profile.department)
         return Teacher.objects.all()
+
     def get_serializer_class(self):
-        if self.action == 'list':
+        if self.action == "list":
             return TeacherProfileTitleSerializer
         return super().get_serializer_class()
-
-    
-    

@@ -112,7 +112,7 @@ DATABASES = {
         "PASSWORD": "postgres",
         "HOST": "127.0.0.1",
         "PORT": "5434",
-        "CONN_MAX_AGE": 60,
+        "CONN_MAX_AGE": 0,
     }
 }
 
@@ -192,8 +192,8 @@ SPECTACULAR_SETTINGS = {
 }
 
 CSRF_TRUSTED_ORIGINS = [
-    "https://sunny-recipes-motorcycles-headers.trycloudflare.com",
-    "https://test-enquiry-freeware-disciplinary.trycloudflare.com",
+    "https://latina-symptoms-request-teenage.trycloudflare.com",
+    "https://sites-aging-checklist-choir.trycloudflare.com",
 ]
 
 
@@ -219,8 +219,8 @@ CELERY_RESULT_BACKEND = "redis://127.0.0.1:6379/1"
 
 CACHES = {
     "default": {
-        "BACKEND": "django.core.cache.backends.redis.RedisCache",
-        "LOCATION": "redis://127.0.0.1:6379",
+       "BACKEND": "django_redis.cache.RedisCache",
+        "LOCATION": "redis://127.0.0.1:6379/1",
     }
 }
 
@@ -228,7 +228,7 @@ TIME_ZONE = "Asia/Kolkata"
 USE_TZ = True
 
 CORS_ALLOWED_ORIGINS = [
-    "https://sunny-recipes-motorcycles-headers.trycloudflare.com",
+    "https://latina-symptoms-request-teenage.trycloudflare.com",
 ]
 
 

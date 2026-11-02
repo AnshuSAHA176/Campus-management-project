@@ -14,13 +14,27 @@ from .notification_clint import wanotification, beforeclass
 import datetime
 from apps.rooms.models import Room
 
+from apps.rooms.serializer import RoomSchedulSerializer
+from apps.account.serializer import TeacherProfileTitleSerializer
 
 class ClassSeasionTitleSerializer(serializers.ModelSerializer):
-    teacher_picture = serializers.ImageField(source="teacher.profile_picture")
+    
+    teacher = TeacherProfileTitleSerializer()
+    room = RoomSchedulSerializer()
+    subject_name = serializers.CharField(source="subject.name")
 
     class Meta:
         model = ClassSession
-        fields = ["id", "teacher", "room", "start_time", "teacher_picture"]
+        fields = [
+            "id",
+            "teacher",
+            "subject_name",
+            "room",
+            "start_time",
+            
+            "date",
+            "end_time",
+        ]
 
 
 class ClassSeasionSerializer(serializers.ModelSerializer):
@@ -202,14 +216,12 @@ class ClassSeasionSerializer(serializers.ModelSerializer):
         validated_data["created_by"] = request.user
 
         instance = ClassSession.objects.create(**validated_data)
-        
 
         transaction.on_commit(lambda: wanotification.delay(instance.id))
-        
+
         notification_time = timezone.make_aware(
             datetime.datetime.combine(date=instance.date, time=instance.start_time)
         ) - datetime.timedelta(minutes=15)
-
 
         transaction.on_commit(
             lambda: beforeclass.apply_async(args=[instance.id], eta=notification_time)
@@ -274,20 +286,21 @@ class RoomSerializer(serializers.ModelSerializer):
             "capacity",
         ]
 
+
 class TeacherSecheduleSerializer(serializers.ModelSerializer):
-    subject_name = serializers.CharField(source = 'subject.name')
-    batch_name = serializers.CharField(source = 'batch.name')
-    room_num = serializers.CharField(source = 'room.room_number')
+    subject_name = serializers.CharField(source="subject.name")
+    batch_name = serializers.CharField(source="batch.name")
+    room_num = serializers.CharField(source="room.room_number")
+
     class Meta:
         model = ClassSession
-        fields =[
-            'id',
-            'date',
-            'start_time',
-            'end_time',
-            'subject_name',
-            'batch_name',
-            'room_num',
-            'status'
+        fields = [
+            "id",
+            "date",
+            "start_time",
+            "end_time",
+            "subject_name",
+            "batch_name",
+            "room_num",
+            "status",
         ]
-

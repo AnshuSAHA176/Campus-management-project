@@ -14,6 +14,14 @@ class BatchSerializer(serializers.ModelSerializer):
         fields = "__all__"
 
 
+class BatchTitleSerializer(serializers.ModelSerializer):
+    semester_name = serializers.CharField(source='semester.name',read_only=True)
+    
+    class Meta:
+        model = Batch
+        fields = ["id", "semester", "name", "academic_year"]
+
+
 class SemesterSerializer(serializers.ModelSerializer):
     class Meta:
         model = Semester

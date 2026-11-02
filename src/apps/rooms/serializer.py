@@ -18,8 +18,14 @@ class RoomAvalableSerializer(serializers.ModelSerializer):
         ]
 
 
-{
-    "room_id": 4,
-    "room_name": "Room 204",
-    "capacity": 60,
-},
+class RoomSchedulSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Room
+        fields = ["id", "room_number", "building", "floor"]
+
+
+# {
+#     "room_id": 4,
+#     "room_name": "Room 204",
+#     "capacity": 60,
+# },
