@@ -1,7 +1,7 @@
 
 from typing import Annotated
 from pydantic import BaseModel
-
+from langgraph.checkpoint.memory import InMemorySaver
 CAMPUS_KEYWORDS = {
     "campus", "university", "college", "department",
     "student", "students", "teacher", "teachers",
@@ -14,16 +14,19 @@ CAMPUS_KEYWORDS = {
     "knowledge", "academic",
 }
 
+cheakpointer = InMemorySaver()
+
 def get_agent(access_token):
     from langgraph.graph import StateGraph, START, END, add_messages
     from langgraph.prebuilt import ToolNode, tools_condition
-    from langgraph.checkpoint.memory import InMemorySaver
+    
     from langchain.messages import HumanMessage, AIMessage
 
     from .tools import Tools
     from .llm import get_model
     from .domain import domain_classifier
 
+    
     model = get_model()
 
     class State(BaseModel):
@@ -108,8 +111,11 @@ def get_agent(access_token):
         }
 
     def agent(state: State):
+        messages = state.messages[-3:]
 
-        return {"messages": [model_with_tool.invoke(state.messages)]}
+        response = model_with_tool.invoke(messages)
+
+        return {"messages": [response]}
 
     graph_builder.add_node("domain_classifier", domain_classifier_node)
 

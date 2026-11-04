@@ -1,0 +1,24 @@
+services:
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_DB: campus_timetable
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - default
+
+  pgbouncer:
+    image: edoburu/pgbouncer:latest
+    ports:
+      - "6432:6432"
+    volumes:
+      - ./pgbouncer/pgbouncer.ini:/etc/pgbouncer/pgbouncer.ini:ro
+      - ./pgbouncer/userlist.txt:/etc/pgbouncer/userlist.txt:ro
+    depends_on:
+      - postgres
+
+volumes:
+  postgres_data:

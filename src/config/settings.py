@@ -22,6 +22,7 @@ import cloudinary.api_client
 import os
 from dotenv import load_dotenv
 from datetime import timedelta
+
 load_dotenv()
 
 BREVO_API_KEY = os.environ.get("BREVO_API_KEY")
@@ -34,16 +35,15 @@ BREVO_SENDER_NAME = os.environ.get(
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.environ.get('SECRET_KEY')
+SECRET_KEY = os.environ.get("SECRET_KEY")
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
 ALLOWED_HOSTS = ["*"]
 
 
-
 INSTALLED_APPS = [
-     "daphne",
+    "daphne",
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -56,15 +56,13 @@ INSTALLED_APPS = [
     "apps.account",
     "apps.academics",
     "apps.rooms",
-    'apps.agent',
+    "apps.agent",
     "apps.scheduling",
     "cloudinary",
-    # "silk", 
-     "corsheaders",
-     "rest_framework_simplejwt.token_blacklist",
+    # "silk",
+    "corsheaders",
+    "rest_framework_simplejwt.token_blacklist",
 ]
-
-
 
 
 MIDDLEWARE = [
@@ -77,7 +75,6 @@ MIDDLEWARE = [
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     # "silk.middleware.SilkyMiddleware",
-    
 ]
 
 ROOT_URLCONF = "config.urls"
@@ -104,6 +101,17 @@ ASGI_APPLICATION = "config.asgi.application"
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
+# DATABASES = {
+#     "default": {
+#         "ENGINE": "django.db.backends.postgresql",
+#         "NAME": "campus_timetable",
+#         "USER": "postgres",
+#         "PASSWORD": "postgres",
+#         "HOST": "127.0.0.1",
+#         "PORT": "5434",
+#         "CONN_MAX_AGE": 0,
+#     }
+# }
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",
@@ -111,8 +119,18 @@ DATABASES = {
         "USER": "postgres",
         "PASSWORD": "postgres",
         "HOST": "127.0.0.1",
-        "PORT": "5434",
+        "PORT": "6432",
+
         "CONN_MAX_AGE": 0,
+        "DISABLE_SERVER_SIDE_CURSORS": True,
+
+        "OPTIONS": {
+            "pool": {
+                "min_size": 2,
+                "max_size": 10,
+                "timeout": 20,
+            }
+        },
     }
 }
 
@@ -161,16 +179,20 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 AUTH_USER_MODEL = "account.User"
 
 REST_FRAMEWORK = {
-    # Use Django's standard `django.contrib.auth` permissions,
-    # or allow read-only access for unauthenticated users.
     "DEFAULT_PERMISSION_CLASSES": [
         "rest_framework.permissions.DjangoModelPermissionsOrAnonReadOnly"
     ],
+
     "DEFAULT_AUTHENTICATION_CLASSES": (
-        "rest_framework_simplejwt.authentication.JWTAuthentication",
+        "apps.account.authentication.CachedJWTAuthentication",
     ),
+
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
-    "DEFAULT_FILTER_BACKENDS": ["django_filters.rest_framework.DjangoFilterBackend"],
+
+    "DEFAULT_FILTER_BACKENDS": [
+        "django_filters.rest_framework.DjangoFilterBackend"
+    ],
+
     "OPTIONS": {
         "context_processors": [
             "django.template.context_processors.request",
@@ -219,7 +241,7 @@ CELERY_RESULT_BACKEND = "redis://127.0.0.1:6379/1"
 
 CACHES = {
     "default": {
-       "BACKEND": "django_redis.cache.RedisCache",
+        "BACKEND": "django_redis.cache.RedisCache",
         "LOCATION": "redis://127.0.0.1:6379/1",
     }
 }
@@ -228,19 +250,14 @@ TIME_ZONE = "Asia/Kolkata"
 USE_TZ = True
 
 CORS_ALLOWED_ORIGINS = [
-    "https://latina-symptoms-request-teenage.trycloudflare.com",
+    "http://localhost:5500",
+    "http://127.0.0.1:5500",
 ]
-
-
-
 
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(minutes=15),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=21),
-
-    
     "ROTATE_REFRESH_TOKENS": False,
     "BLACKLIST_AFTER_ROTATION": False,
-
     "AUTH_HEADER_TYPES": ("Bearer",),
 }

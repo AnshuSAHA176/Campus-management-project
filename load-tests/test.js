@@ -1,12 +1,11 @@
 
 import http from "k6/http";
-import { check, sleep } from "k6";
+import { check } from "k6";
 import { Counter } from "k6/metrics";
 
 const BASE_URL = __ENV.BASE_URL || "http://127.0.0.1:8000";
 
 const dashboardStatuses = new Counter("dashboard_statuses");
-
 
 export const options = {
   scenarios: {
@@ -15,10 +14,7 @@ export const options = {
       startVUs: 10,
       stages: [
         { duration: "1m", target: 2000 },
-        { duration: "1m", target: 1000 },
-        { duration: "1m", target: 1500 },
-        { duration: "1m", target: 2000 },
-        { duration: "1m", target: 2000 },
+        { duration: "2m", target: 2000 },
         { duration: "30s", target: 0 },
       ],
       gracefulRampDown: "30s",
@@ -30,7 +26,6 @@ export const options = {
     http_req_duration: ["p(95)<1000"],
   },
 };
-
 
 export function setup() {
   const response = http.post(
@@ -81,12 +76,4 @@ export default function (data) {
   check(response, {
     "dashboard returns 200": (r) => r.status === 200,
   });
-
-  if (response.status !== 200) {
-    console.error(
-      `Dashboard failed: status=${response.status}, body=${response.body}`
-    );
-  }
-
-  sleep(1);
 }

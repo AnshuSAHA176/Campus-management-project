@@ -117,12 +117,12 @@ class AdminDashBoard(APIView):
         # Check cache first
         cache_data = cache.get(cache_key)
         if cache_data is not None:
-            print("CACHE HIT")
+           
             return Response(cache_data)
         print("CACHE MISS")
         # Acquire lock
         owner = str(uuid.uuid4())
-        lock_acquired = redis_client.set("locked", value=owner, nx=True, ex=60 * 2)
+        lock_acquired = redis_client.set(lock_key, value=owner, nx=True, ex=60 * 2)
 
         if lock_acquired:
             print("LOCK ACQUIRED - DATABASE QUERY")
@@ -136,13 +136,13 @@ class AdminDashBoard(APIView):
                 data = self.build_dashboard()
 
                 # Cache for 1 hour
-                cache.set(cache_key, data, timeout=3600)
+                cache.set(cache_key, data, timeout=30)
 
                 return Response(data)
 
             finally:
 
-                releaseLock(lock="locked", owner=owner)
+                releaseLock(lock=lock_key, owner=owner)
         else:
             print("LOCK NOT ACQUIRED")
         # Another request is building the dashboard
@@ -305,7 +305,7 @@ class TeacherSearchView(APIView):
 
         teachers = Teacher.objects.filter(
             Q(full_name__icontains=query) | Q(employee_id__icontains=query)
-        ).values("id", "full_name", "employee_id",)[:10]
+        ).values("id", "full_name", "employee_id",)[:3]
 
         return Response(list(teachers))
 

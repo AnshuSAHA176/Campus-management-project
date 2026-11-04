@@ -124,7 +124,7 @@ User: Explain quantum physics.
 User message:
 {message}
 """
-    model = get_model()
+    model = get_model(model="openai/gpt-oss-20b")
     response = model.invoke(prompt)
 
     data = json.loads(response.content)
