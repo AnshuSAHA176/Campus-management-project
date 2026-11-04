@@ -1,5 +1,6 @@
 from datetime import date
-import requests
+
+import httpx
 
 
 class Services:
@@ -13,7 +14,7 @@ class Services:
             "Content-Type": "application/json",
         }
 
-    def get_schedule(
+    async def get_schedule(
         self,
         schedule_date=None,
         date_from=None,
@@ -32,24 +33,18 @@ class Services:
 
         if date_to:
             params["date_to"] = date_to
+        async with httpx.AsyncClient(timeout=10) as client:
+            response = await client.get(
+                f"{self.base_url}scheduling/tools/",
+                headers=self._headers(),
+                params=params,
+            )
 
-        response = requests.get(
-            f"{self.base_url}scheduling/tools/",
-            headers=self._headers(),
-            params=params,
-        )
+            response.raise_for_status()
 
-        print("STATUS:", response.status_code)
-        print("URL:", response.url)
-        print("CONTENT TYPE:", response.headers.get("Content-Type"))
-        print("BODY:", response.text[:500])
+            return response.json()
 
-        response.raise_for_status()
-
-        return response.json()
-        
-
-    def get_avalable_rooms(
+    async def get_avalable_rooms(
         self,
         schedule_date=None,
         start_time=None,
@@ -68,18 +63,18 @@ class Services:
 
         if end_time:
             params["end_time"] = end_time
+        async with httpx.AsyncClient(timeout=10) as client:
+            response = await client.get(
+                f"{self.base_url}scheduling/available-rooms/",
+                headers=self._headers(),
+                params=params,
+            )
 
-        response = requests.get(
-            f"{self.base_url}scheduling/available-rooms/",
-            headers=self._headers(),
-            params=params,
-        )
+            response.raise_for_status()
 
-        response.raise_for_status()
+            return response.json()
 
-        return response.json()
-
-    def check_schedule_conflict(
+    async def check_schedule_conflict(
         self,
         schedule_date,
         start_time,
@@ -102,107 +97,111 @@ class Services:
 
         if room_id:
             params["room_id"] = room_id
+        async with httpx.AsyncClient(timeout=10) as client:
+            response = await client.get(
+                f"{self.base_url}scheduling/conflict/",
+                headers=self._headers(),
+                params=params,
+            )
 
-        response = requests.get(
-            f"{self.base_url}scheduling/conflict/",
-            headers=self._headers(),
-            params=params,
-        )
+            response.raise_for_status()
 
-        response.raise_for_status()
+            return response.json()
 
-        return response.json()
+    async def search_teachers(self, query):
+        async with httpx.AsyncClient(timeout=10) as client:
+            response = await client.get(
+                f"{self.base_url}teacher_search/",
+                headers=self._headers(),
+                params={"q": query},
+            )
 
-    def search_teachers(self, query):
-        response = requests.get(
-            f"{self.base_url}teacher_search/",
-            headers=self._headers(),
-            params={"q": query},
-        )
+            response.raise_for_status()
 
-        response.raise_for_status()
+            return response.json()
 
-        return response.json()
+    async def search_batches(self, query):
+        async with httpx.AsyncClient(timeout=10) as client:
+            response = await client.get(
+                f"{self.base_url}api/batches/search/",
+                headers=self._headers(),
+                params={"q": query},
+            )
 
-    def search_batches(self, query):
-        response = requests.get(
-            f"{self.base_url}api/batches/search/",
-            headers=self._headers(),
-            params={"q": query},
-        )
+            response.raise_for_status()
 
-        response.raise_for_status()
+            return response.json()
 
-        return response.json()
+    async def search_rooms(self, query):
+        async with httpx.AsyncClient(timeout=10) as client:
+            response = await client.get(
+                f"{self.base_url}rooms/search/",
+                headers=self._headers(),
+                params={"q": query},
+            )
 
-    def search_rooms(self, query):
-        response = requests.get(
-            f"{self.base_url}rooms/search/",
-            headers=self._headers(),
-            params={"q": query},
-        )
+            response.raise_for_status()
 
-        response.raise_for_status()
+            return response.json()
 
-        return response.json()
-
-    def teacher_schedule(self, teacher_id, schedule_date):
+    async def teacher_schedule(self, teacher_id, schedule_date):
         params = {
             "date": schedule_date,
         }
 
         if teacher_id is not None:
             params["teacher_id"] = teacher_id
+        async with httpx.AsyncClient(timeout=10) as client:
+            response = await client.get(
+                f"{self.base_url}scheduling/teacher-schedule/",
+                headers=self._headers(),
+                params=params,
+            )
 
-        response = requests.get(
-            f"{self.base_url}scheduling/teacher-schedule/",
-            headers=self._headers(),
-            params=params,
-        )
+            if response.status_code == 400:
+                return response.json()
 
-        if response.status_code == 400:
+            response.raise_for_status()
+
             return response.json()
 
-        response.raise_for_status()
+    async def room_avalable(self, schedule_date, start_time, end_time):
+        if not schedule_date and not start_time and not end_time:
+            schedule_date = date.today().isoformat()
 
-        return response.json()
+        params = {}
 
-    def room_avalable(self, schedule_date, start_time, end_time):
-         if not schedule_date and not start_time and not end_time:
-                    schedule_date = date.today().isoformat()
-        
-         params = {}
-        
-         if schedule_date:
-                params["date"] = schedule_date
-        
-         if start_time:
-                params["start_time"] = start_time
-        
-         if end_time:
-                params["end_time"] = end_time
+        if schedule_date:
+            params["date"] = schedule_date
 
+        if start_time:
+            params["start_time"] = start_time
 
-         response = requests.get(
-            f"{self.base_url}rooms/avalable/",
-            headers=self._headers(),
-            params=params,
-        )
+        if end_time:
+            params["end_time"] = end_time
+        async with httpx.AsyncClient(timeout=10) as client:
+            response = await client.get(
+                f"{self.base_url}rooms/avalable/",
+                headers=self._headers(),
+                params=params,
+            )
 
-         if response.status_code == 400:
+            if response.status_code == 400:
+                return response.json()
+
+            response.raise_for_status()
+
             return response.json()
 
-         response.raise_for_status()
+    async def search_subjects(self, query):
+        async with httpx.AsyncClient(timeout=10) as client:
 
-         return response.json()
+            response = await client.get(
+                f"{self.base_url}api/subject/search/",
+                headers=self._headers(),
+                params={"q": query},
+            )
 
-    def search_subjects(self, query):
-        response = requests.get(
-            f"{self.base_url}api/subject/search/",
-            headers=self._headers(),
-            params={"q": query},
-        )
+            response.raise_for_status()
 
-        response.raise_for_status()
-
-        return response.json()
+            return response.json()

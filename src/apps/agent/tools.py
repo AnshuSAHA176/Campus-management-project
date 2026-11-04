@@ -9,11 +9,14 @@ BASE_URL = "http://127.0.0.1:8000/"
 
 
 def Tools(access_token):
-
-    services = Services(base_url=BASE_URL, access_token=access_token)
+    services = Services(
+        base_url=BASE_URL,
+        access_token=access_token
+    )
+    
 
     @tool
-    def get_schedule(
+    async def get_schedule(
         schedule_date: Optional[str] = None,
         date_from: Optional[str] = None,
         date_to: Optional[str] = None,
@@ -28,7 +31,7 @@ def Tools(access_token):
 
         Dates must use YYYY-MM-DD format.
         """
-        result = services.get_schedule(
+        result = await services.get_schedule(
             schedule_date=schedule_date,
             date_from=date_from,
             date_to=date_to,
@@ -40,7 +43,7 @@ def Tools(access_token):
         return json.dumps(result)
 
     @tool
-    def get_available_rooms(
+    async def get_available_rooms(
         schedule_date: str,
         start_time: str,
         end_time: str,
@@ -56,7 +59,7 @@ def Tools(access_token):
         class during the requested time.
         """
 
-        result = services.get_avalable_rooms(
+        result = await services.get_avalable_rooms(
             schedule_date=schedule_date,
             start_time=start_time,
             end_time=end_time,
@@ -65,7 +68,7 @@ def Tools(access_token):
         return json.dumps(result)
 
     @tool
-    def check_schedule_conflict(
+    async def check_schedule_conflict(
         schedule_date: str,
         start_time: str,
         end_time: str,
@@ -102,7 +105,7 @@ def Tools(access_token):
         if not room_id:
             return "room_id is required."
 
-        result = services.check_schedule_conflict(
+        result = await  services.check_schedule_conflict(
             schedule_date=schedule_date,
             start_time=start_time,
             end_time=end_time,
@@ -117,7 +120,7 @@ def Tools(access_token):
         return json.dumps(result, default=str)
 
     @tool
-    def search_teachers(query: str):
+    async def search_teachers(query: str):
         """
         Search for teachers by name or employee ID.
 
@@ -128,7 +131,7 @@ def Tools(access_token):
         search_teachers("Bikash")
         """
 
-        result = services.search_teachers(query)
+        result = await services.search_teachers(query)
 
         if not result:
             return "No teacher found matching the search."
@@ -136,7 +139,7 @@ def Tools(access_token):
         return json.dumps(result, default=str)
 
     @tool
-    def search_batches(query: str):
+    async def search_batches(query: str):
         """
         Search for batches by batch name.
 
@@ -147,7 +150,7 @@ def Tools(access_token):
         search_batches("BCA-3B")
         """
 
-        result = services.search_batches(query)
+        result = await services.search_batches(query)
 
         if not result:
             return "No batch found matching the search."
@@ -155,7 +158,7 @@ def Tools(access_token):
         return json.dumps(result, default=str)
 
     @tool
-    def search_rooms(query: str):
+    async def search_rooms(query: str):
         """
         Search for rooms by room number or floor.
 
@@ -166,7 +169,7 @@ def Tools(access_token):
         search_rooms("301")
         """
 
-        result = services.search_rooms(query)
+        result = await services.search_rooms(query)
 
         if not result:
             return "No room found matching the search."
@@ -174,7 +177,7 @@ def Tools(access_token):
         return json.dumps(result, default=str)
 
     @tool
-    def teacher_schedule(
+    async def teacher_schedule(
         teacher_id: int | None,
         schedule_date: str,
     ):
@@ -205,7 +208,7 @@ def Tools(access_token):
                 "Use search_teachers to find the teacher first."
             )
 
-        result = services.teacher_schedule(
+        result = await services.teacher_schedule(
             teacher_id=teacher_id,
             schedule_date=schedule_date,
         )
@@ -213,7 +216,7 @@ def Tools(access_token):
         return json.dumps(result, default=str)
 
     @tool
-    def find_available_rooms(
+    async def find_available_rooms(
         schedule_date: str | None = None,
         start_time: str | None = None,
         end_time: str | None = None,
@@ -225,14 +228,14 @@ def Tools(access_token):
         Dates must use YYYY-MM-DD format.
         Times must use HH:MM:SS format.
         """
-        result = services.room_avalable(
+        result = await  services.room_avalable(
             schedule_date=schedule_date, start_time=start_time, end_time=end_time
         )
 
         return json.dumps(result, default=str)
 
     @tool
-    def search_subjects(query: str):
+    async def search_subjects(query: str):
         """
         Search for subjects by subject name or code.
 
@@ -243,34 +246,33 @@ def Tools(access_token):
         search_subjects("Data Structures")
         """
 
-        result = services.search_subjects(query)
+        result = await services.search_subjects(query)
 
         if not result:
             return "No subject found matching the search."
 
         return json.dumps(result, default=str)
     @tool
-    def knowledge_base_tool(user_query:str):
+    async def knowledge_base_tool(user_query: str):
         """
-    Search the campus knowledge base for relevant institutional information.
+        Search uploaded institutional documents for information.
 
-    Use this tool when the user asks about university rules, academic
-    regulations, department information, procedures, policies, notices,
-    courses, attendance, examinations, or other information that may
-    exist in the uploaded campus documents.
+        ONLY use for:
+        - University policies and regulations.
+        - Admission and examination rules.
+        - Academic procedures and curriculum.
+        - Department information from official documents.
+        - Questions explicitly asking about uploaded documents or PDFs.
 
-    Args:
-        user_query: The user's question or search query.
-
-    Returns:
-        A JSON string containing the most relevant document chunks,
-        including document ID, page range, and chunk text.
-    """
-
-        result = knowledge_base(user_query=user_query)
-
+        NEVER use for:
+        - Teacher profiles or teacher records.
+        - Student or batch records.
+        - Live schedules or timetables.
+        - Room availability.
+        - Live campus database information.
+        """
+        result = await knowledge_base(user_query=user_query)
         return json.dumps(result, default=str)
-
 
 
     return (

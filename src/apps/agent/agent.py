@@ -2,6 +2,8 @@
 from typing import Annotated
 from pydantic import BaseModel
 from langgraph.checkpoint.memory import InMemorySaver
+
+
 CAMPUS_KEYWORDS = {
     "campus", "university", "college", "department",
     "student", "students", "teacher", "teachers",
@@ -14,56 +16,42 @@ CAMPUS_KEYWORDS = {
     "knowledge", "academic",
 }
 
-cheakpointer = InMemorySaver()
+checkpointer = InMemorySaver()
+
 
 def get_agent(access_token):
+
     from langgraph.graph import StateGraph, START, END, add_messages
     from langgraph.prebuilt import ToolNode, tools_condition
-    
     from langchain.messages import HumanMessage, AIMessage
 
     from .tools import Tools
     from .llm import get_model
     from .domain import domain_classifier
 
-    
     model = get_model()
 
     class State(BaseModel):
         messages: Annotated[list, add_messages]
-
         domain: str | None = None
 
     graph_builder = StateGraph(State)
 
-    (
-        get_today_schedule,
-        get_available_rooms,
-        check_schedule_conflict,
-        search_teachers,
-        search_batches,
-        search_rooms,
-        teacher_schedule,
-        find_available_rooms,
-        search_subjects,
-        knowledge_base_tool,
-    ) = Tools(access_token)
+    tools = list(Tools(access_token))
 
-    tools = [
-        get_today_schedule,
-        get_available_rooms,
-        check_schedule_conflict,
-        search_teachers,
-        search_batches,
-        search_rooms,
-        teacher_schedule,
-        find_available_rooms,
-        search_subjects,
-        knowledge_base_tool,
-    ]
     model_with_tool = model.bind_tools(tools)
+    for index, tool in enumerate(tools):
+        print({
+            "index": index,
+            "type": type(tool).__name__,
+            "name": getattr(tool, "name", None),
+            "args": getattr(tool, "args", None),
+        })
 
-    def domain_classifier_node(state: State):
+        assert getattr(tool, "name", None), (
+            f"Invalid tool at index {index}: {tool}"
+        )
+    async def domain_classifier_node(state: State):
 
         human_messages = [
             message
@@ -71,67 +59,63 @@ def get_agent(access_token):
             if isinstance(message, HumanMessage)
         ]
 
-        recent_human_messages = human_messages[-3:]
-
         conversation = "\n".join(
-            message.content
-            for message in recent_human_messages
+            message.content for message in human_messages[-3:]
         )
 
         text = conversation.lower()
 
-        # Deterministic campus routing
-        if any(
-            keyword in text
-            for keyword in CAMPUS_KEYWORDS
-        ):
+        if any(keyword in text for keyword in CAMPUS_KEYWORDS):
             return {"domain": "campus"}
 
-        # Let the LLM classify ambiguous requests
-        domain = domain_classifier(conversation)
+        domain = await domain_classifier(conversation)
 
         return {"domain": domain}
 
     def domain_router(state: State):
-        domain = state.domain
-        if domain != "campus":
-            return "offtopic"
-        return "ontopic"
+        return "offtopic" if state.domain != "campus" else "ontopic"
 
     def reject_topic(state: State):
-
         return {
             "messages": [
                 AIMessage(
-                    content="I can help with your campus management system, but I can't help "
-                    "with that topic. Try asking me about schedules, timetables, "
-                    "teachers, students, subjects, batches, rooms, or class scheduling."
+                    content=(
+                        "I can help with your campus management system, "
+                        "but I can't help with that topic."
+                    )
                 )
             ]
         }
 
-    def agent(state: State):
-        messages = state.messages[-3:]
-
-        response = model_with_tool.invoke(messages)
-
+    async def agent(state: State):
+        response = await model_with_tool.ainvoke(state.messages[-3:])
         return {"messages": [response]}
 
-    graph_builder.add_node("domain_classifier", domain_classifier_node)
+    tool_node = ToolNode(tools)
 
+    async def execute_tools(state: State):
+        return await tool_node.ainvoke(state)
+
+    graph_builder.add_node("domain_classifier", domain_classifier_node)
     graph_builder.add_node("reject", reject_topic)
     graph_builder.add_node("agent", agent)
-    graph_builder.add_node("tools", ToolNode(tools))
-    # edges
+    graph_builder.add_node("tools", execute_tools)
 
     graph_builder.add_edge(START, "domain_classifier")
 
     graph_builder.add_conditional_edges(
-        "domain_classifier", domain_router, {"offtopic": "reject", "ontopic": "agent"}
+        "domain_classifier",
+        domain_router,
+        {
+            "offtopic": "reject",
+            "ontopic": "agent",
+        }
     )
 
     graph_builder.add_edge("reject", END)
+
     graph_builder.add_conditional_edges("agent", tools_condition)
+
     graph_builder.add_edge("tools", "agent")
 
-    return graph_builder.compile(checkpointer=cheakpointer)
+    return graph_builder.compile(checkpointer=checkpointer)

@@ -1,133 +1,70 @@
-from pydantic import BaseModel
+
+import json
+from pydantic import BaseModel, ValidationError
 from typing import Literal
 from .llm import get_model
-import json
-
-from typing import Literal
-import json
-from pydantic import BaseModel
 
 
 class Domain(BaseModel):
     domain: Literal["campus", "unknown"]
 
 
-def domain_classifier(message: str):
+async def domain_classifier(message: str) -> str:
 
     prompt = """
 You are the domain classifier for CampusAI.
 
-Classify the user's request into exactly one of:
-
+Classify the request into exactly one category:
 - campus
 - unknown
 
 Return ONLY valid JSON:
-
-{"domain": "campus"}
-
+{{"domain": "campus"}}
 or
+{{"domain": "unknown"}}
 
-{"domain": "unknown"}
+Classify as campus for:
+- University, departments, students, teachers.
+- Batches, subjects, classrooms, rooms.
+- Schedules, timetables, classes, attendance.
+- Exams, admissions, curriculum, courses, research.
+- Regulations, policies, procedures, notices.
+- Institutional information and uploaded documents.
+- PDFs and knowledge-base questions.
 
-CLASSIFY AS "campus" if the question is about ANY of the following:
+Document references such as "this document", "the PDF",
+or "according to the document" are campus requests.
 
-- university
-- campus
-- department
-- students
-- teachers
-- batches
-- subjects
-- classrooms
-- rooms
-- schedules
-- timetables
-- classes
-- exams
-- attendance
-- admission
-- academic programs
-- curriculum
-- courses
-- research
-- regulations
-- rules
-- policies
-- procedures
-- notices
-- institutional information
-- uploaded documents
-- PDFs
-- the knowledge base
-- information contained in a document
-
-IMPORTANT:
-If the user says:
-- "the document"
-- "this document"
-- "the PDF"
-- "this PDF"
-- "the uploaded document"
-- "according to the document"
-- "what does the document say"
-- "according to the PDF"
-
-classify the request as "campus".
-
-Also classify questions containing academic terms such as:
-- curriculum
-- program objectives
-- course structure
-- academic focus
-- research focus
-- eligibility
-- admission requirements
-
-as "campus" when they could refer to institutional information.
-
-Examples:
-
-User: What does the document say about the applied curriculum?
-{"domain": "campus"}
-
-User: What does the document say about the curriculum?
-{"domain": "campus"}
-
-User: What does the PDF say about admission?
-{"domain": "campus"}
-
-User: What are the program objectives?
-{"domain": "campus"}
-
-User: What is the academic and research focus?
-{"domain": "campus"}
-
-User: What classes do I have tomorrow?
-{"domain": "campus"}
-
-User: What rooms are available tomorrow?
-{"domain": "campus"}
-
-User: What is the weather today?
-{"domain": "unknown"}
-
-User: Write a Python program.
-{"domain": "unknown"}
-
-User: Tell me a joke.
-{"domain": "unknown"}
-
-User: Explain quantum physics.
-{"domain": "unknown"}
+Classify as unknown for unrelated topics such as:
+- Weather
+- General programming questions
+- Jokes
+- General science questions
 
 User message:
 {message}
 """
+
     model = get_model(model="openai/gpt-oss-20b")
-    response = model.invoke(prompt)
 
-    data = json.loads(response.content)
-    result = Domain.model_validate(data)
+    response = await model.ainvoke(
+        prompt.format(message=message)
+    )
 
-    return result.domain
+    try:
+        content = response.content
+
+        # Handle possible Markdown JSON fences
+        if isinstance(content, str):
+            content = content.strip()
+            if content.startswith("```"):
+                content = content.split("\n", 1)[1]
+                content = content.rsplit("```", 1)[0].strip()
+
+        data = json.loads(content)
+        result = Domain.model_validate(data)
+
+        return result.domain
+
+    except (json.JSONDecodeError, ValidationError, TypeError):
+        return "unknown"
