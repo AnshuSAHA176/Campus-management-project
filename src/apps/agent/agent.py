@@ -1,5 +1,7 @@
 
 from typing import Annotated
+import re
+
 from pydantic import BaseModel
 from langgraph.checkpoint.memory import InMemorySaver
 
@@ -38,19 +40,40 @@ def get_agent(access_token):
     graph_builder = StateGraph(State)
 
     tools = list(Tools(access_token))
-
     model_with_tool = model.bind_tools(tools)
-    for index, tool in enumerate(tools):
-        print({
-            "index": index,
-            "type": type(tool).__name__,
-            "name": getattr(tool, "name", None),
-            "args": getattr(tool, "args", None),
-        })
 
-        assert getattr(tool, "name", None), (
-            f"Invalid tool at index {index}: {tool}"
+    def get_conversation(messages, keep_messages=8):
+
+        recent_messages = messages[-keep_messages:]
+        conversation = []
+
+        for message in recent_messages:
+
+            if isinstance(message, HumanMessage):
+                role = "User"
+
+            elif isinstance(message, AIMessage):
+                role = "Assistant"
+
+            else:
+                continue
+
+            content = message.content
+
+            if isinstance(content, str) and content.strip():
+                conversation.append(f"{role}: {content}")
+
+        return "\n".join(conversation)
+
+    def contains_campus_keyword(message):
+
+        text = message.lower()
+
+        return any(
+            re.search(rf"\b{re.escape(keyword)}\b", text)
+            for keyword in CAMPUS_KEYWORDS
         )
+
     async def domain_classifier_node(state: State):
 
         human_messages = [
@@ -59,23 +82,33 @@ def get_agent(access_token):
             if isinstance(message, HumanMessage)
         ]
 
-        conversation = "\n".join(
-            message.content for message in human_messages[-3:]
-        )
+        if not human_messages:
+            return {"domain": "unknown"}
 
-        text = conversation.lower()
+        current_message = human_messages[-1].content
 
-        if any(keyword in text for keyword in CAMPUS_KEYWORDS):
+        if not isinstance(current_message, str):
+            current_message = str(current_message)
+
+        if contains_campus_keyword(current_message):
             return {"domain": "campus"}
+
+        conversation = get_conversation(state.messages)
 
         domain = await domain_classifier(conversation)
 
         return {"domain": domain}
 
     def domain_router(state: State):
-        return "offtopic" if state.domain != "campus" else "ontopic"
+
+        return (
+            "ontopic"
+            if state.domain == "campus"
+            else "offtopic"
+        )
 
     def reject_topic(state: State):
+
         return {
             "messages": [
                 AIMessage(
@@ -87,16 +120,44 @@ def get_agent(access_token):
             ]
         }
 
+    def window_messages(messages, keep_turns=3):
+
+        human_indices = [
+            i
+            for i, message in enumerate(messages)
+            if isinstance(message, HumanMessage)
+        ]
+
+        if not human_indices:
+            return messages
+
+        start = (
+            human_indices[-keep_turns]
+            if len(human_indices) >= keep_turns
+            else human_indices[0]
+        )
+
+        return messages[start:]
+
     async def agent(state: State):
-        response = await model_with_tool.ainvoke(state.messages[-3:])
+
+        response = await model_with_tool.ainvoke(
+            window_messages(state.messages)
+        )
+
         return {"messages": [response]}
 
     tool_node = ToolNode(tools)
 
     async def execute_tools(state: State):
+
         return await tool_node.ainvoke(state)
 
-    graph_builder.add_node("domain_classifier", domain_classifier_node)
+    graph_builder.add_node(
+        "domain_classifier",
+        domain_classifier_node
+    )
+
     graph_builder.add_node("reject", reject_topic)
     graph_builder.add_node("agent", agent)
     graph_builder.add_node("tools", execute_tools)
@@ -114,8 +175,13 @@ def get_agent(access_token):
 
     graph_builder.add_edge("reject", END)
 
-    graph_builder.add_conditional_edges("agent", tools_condition)
+    graph_builder.add_conditional_edges(
+        "agent",
+        tools_condition
+    )
 
     graph_builder.add_edge("tools", "agent")
 
-    return graph_builder.compile(checkpointer=checkpointer)
+    return graph_builder.compile(
+        checkpointer=checkpointer
+    )

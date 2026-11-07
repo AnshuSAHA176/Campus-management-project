@@ -1,7 +1,7 @@
 from datetime import date
 
 import httpx
-
+from datetime import date, time
 
 class Services:
     def __init__(self, base_url, access_token):
@@ -44,25 +44,32 @@ class Services:
 
             return response.json()
 
+    
+
     async def get_avalable_rooms(
         self,
         schedule_date=None,
         start_time=None,
         end_time=None,
     ):
-        if not schedule_date and not start_time and not end_time:
+        if not schedule_date:
             schedule_date = date.today().isoformat()
 
-        params = {}
+        if not start_time or not end_time:
+            raise ValueError("Both start_time and end_time are required.")
 
-        if schedule_date:
-            params["date"] = schedule_date
+        start = time.fromisoformat(start_time)
+        end = time.fromisoformat(end_time)
 
-        if start_time:
-            params["start_time"] = start_time
+        if start >= end:
+            raise ValueError("End time must be after start time.")
 
-        if end_time:
-            params["end_time"] = end_time
+        params = {
+            "date": schedule_date,
+            "start_time": start.isoformat(),
+            "end_time": end.isoformat(),
+        }
+
         async with httpx.AsyncClient(timeout=10) as client:
             response = await client.get(
                 f"{self.base_url}scheduling/available-rooms/",
@@ -71,7 +78,6 @@ class Services:
             )
 
             response.raise_for_status()
-
             return response.json()
 
     async def check_schedule_conflict(

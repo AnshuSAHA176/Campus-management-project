@@ -4,15 +4,13 @@ from ..models import DocumentChunk
 from .embedding import generate_embedding
 
 
-def knowledge_base(user_query: str) -> list:
+import asyncio
+from asgiref.sync import sync_to_async
 
-    embedding = generate_embedding(user_query)
-
-    knowledge = (
+def _search_chunks(embedding):
+    return list(
         DocumentChunk.objects
-        .annotate(
-            distance=CosineDistance("embedding", embedding)
-        )
+        .annotate(distance=CosineDistance("embedding", embedding))
         .filter(document__status="DONE")
         .order_by("distance")
         .values(
@@ -24,4 +22,6 @@ def knowledge_base(user_query: str) -> list:
         )[:2]
     )
 
-    return list(knowledge)
+async def knowledge_base(user_query: str) -> list:
+    embedding = await asyncio.to_thread(generate_embedding, user_query)
+    return await sync_to_async(_search_chunks)(embedding)
